@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { api, ApiError } from "@/lib/api";
-import { inboxBadge, interestLabel } from "@/pages/inbox/inbox-list";
+import { inboxBadge, interestLabel, threadBadgeLabel } from "@/pages/inbox/inbox-list";
 
 interface InboxMessage {
   id: string;
@@ -91,7 +91,7 @@ export function InboxPage() {
               className={`w-full rounded-lg border p-3 text-left ${thread.key === selectedKey ? "border-primary bg-primary/5" : "bg-card"}`}
             >
               <span className="block text-sm font-medium">{thread.subject || "(no subject)"}</span>
-              <span className="mt-1 block text-xs text-muted-foreground">{thread.badge}</span>
+              <span className="mt-1 block text-xs text-muted-foreground">{threadBadgeLabel(thread.badge)}</span>
             </button>
           ))}
         </div>

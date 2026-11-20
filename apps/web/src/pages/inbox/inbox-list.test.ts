@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inboxBadge, interestLabel } from "./inbox-list.js";
+import { inboxBadge, interestLabel, threadBadgeLabel } from "./inbox-list.js";
 
 describe("inbox list labels", () => {
   it("labels an auto-reply with the spec string", () => {
@@ -18,5 +18,17 @@ describe("inbox list labels", () => {
     expect(interestLabel("interested")).toBe("Interested");
     expect(interestLabel("not_interested")).toBe("Not interested");
     expect(interestLabel(null)).toBeNull();
+  });
+});
+
+describe("sent messages", () => {
+  it("labels a sent message Sent, never Unmatched", () => {
+    expect(inboxBadge("sent")).toEqual({ label: "Sent", tone: "neutral" });
+  });
+
+  it("capitalises thread badges but keeps auto-reply as written", () => {
+    expect(threadBadgeLabel("sent")).toBe("Sent");
+    expect(threadBadgeLabel("reply")).toBe("Reply");
+    expect(threadBadgeLabel("auto-reply")).toBe("auto-reply");
   });
 });
