@@ -46,6 +46,13 @@ export async function handleWarmySenderHttp(
     if (method === "DELETE" && path === "/api/settings/warmysender") {
       return { status: 200, body: { data: await disconnectWarmySender(deps.keys) } };
     }
+    if (method === "GET" && path === "/api/warmysender/mailboxes") {
+      const rows = await deps.services.mailboxes.list();
+      return {
+        status: 200,
+        body: { data: rows.map((row) => ({ id: row.id, email: row.email, kind: row.provider })) },
+      };
+    }
     if (method === "GET" && path === "/api/warmysender/leads") {
       const status = await warmySenderStatus(deps.keys);
       if (!status.connected) return { status: 200, body: { data: { connected: false, card: connectCard("leads") } } };
@@ -57,9 +64,9 @@ export async function handleWarmySenderHttp(
     if (method === "POST" && path === "/api/warmysender/verify") {
       return await verify(deps, request.body);
     }
-    const warmup = /^\/api\/warmysender\/mailboxes\/([^/]+)\/warmup$/.exec(path);
-    if (warmup && method === "POST") return await postWarmup(deps, decodeURIComponent(warmup[1]), request.body);
-    if (warmup && method === "GET") return await getWarmup(deps, decodeURIComponent(warmup[1]));
+    const warmupId = /^\/api\/warmysender\/mailboxes\/([^/]+)\/warmup$/.exec(path)?.[1];
+    if (warmupId && method === "POST") return await postWarmup(deps, decodeURIComponent(warmupId), request.body);
+    if (warmupId && method === "GET") return await getWarmup(deps, decodeURIComponent(warmupId));
     throw new ApiError(404, "not_found", "No such WarmySender route.");
   } catch (error) {
     if (error instanceof ApiError) return { status: error.status, body: errorBody(error) };
@@ -79,7 +86,7 @@ async function verify(deps: WarmyHttpDeps, body: unknown): Promise<{ status: num
   if (!key) return { status: 200, body: { data: { connected: false, card: connectCard("verify") } } };
 
   const object = objectBody(body);
-  let emails: string[] = [];
+  let emails: string[];
   if (typeof object.list_id === "string" && object.list_id.length > 0) {
     const fromList = await deps.services.lists.emails(object.list_id);
     if (!fromList) throw new ApiError(404, "not_found", "List not found.");

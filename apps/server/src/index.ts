@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { createDb, loadConfig, runMigrations } from "@warmysender/core";
 import { createApp } from "./app.js";
 import { defaultWebDist } from "./paths.js";
+import { seedDemoIfEmpty } from "./seed/seed-demo.js";
 
 async function main(): Promise<void> {
   if (process.argv[2] === "doctor") {
@@ -17,6 +18,10 @@ async function main(): Promise<void> {
   }
   await runMigrations(config.databaseUrl);
   const { db, close } = createDb(config.databaseUrl);
+  if (config.nodeEnv !== "production") {
+    const seeded = await seedDemoIfEmpty(db, config.encryptionKey);
+    if (seeded.inserted) console.log("[seed] loaded .test demo contacts and a draft campaign");
+  }
   const webDist = defaultWebDist();
   const app = createApp({ db, config, serveWeb: existsSync(webDist), webDist });
   const server = app.listen(config.port, config.host, () => {

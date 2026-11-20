@@ -42,7 +42,7 @@ export async function handleApiV1(
       return { status: 200, body: pageBody(await services.contacts.list(listQuery(request.query))) };
     case "updateContactStatus": {
       const status = requireStatus(objectBody(request.body));
-      const contact = await services.contacts.updateStatus(matched.params.id, status);
+      const contact = await services.contacts.updateStatus(must(matched.params, "id"), status);
       if (!contact) throw new ApiError(404, "not_found", "Contact not found.");
       return { status: 200, body: { data: contact } };
     }
@@ -54,7 +54,7 @@ export async function handleApiV1(
       return { status: 200, body: pageBody(await services.lists.list(pageQuery(request.query))) };
     case "addContactsToList": {
       const ids = requireStringArray(objectBody(request.body), "contact_ids");
-      const added = await services.lists.addContacts(matched.params.id, ids);
+      const added = await services.lists.addContacts(must(matched.params, "id"), ids);
       if (!added) throw new ApiError(404, "not_found", "List not found.");
       return { status: 200, body: { data: added } };
     }
@@ -63,7 +63,7 @@ export async function handleApiV1(
       return { status: 201, body: { data: await services.campaigns.create({ name }) } };
     }
     case "getCampaign":
-      return { status: 200, body: { data: await requireCampaign(services, matched.params.id) } };
+      return { status: 200, body: { data: await requireCampaign(services, must(matched.params, "id")) } };
     case "updateCampaign": {
       const body = objectBody(request.body);
       const name = optionalString(body, "name");
@@ -71,7 +71,7 @@ export async function handleApiV1(
       if (name === undefined && mailboxIds === undefined) {
         throw new ApiError(400, "validation_error", "Provide name or mailbox_ids.");
       }
-      const campaign = await services.campaigns.update(matched.params.id, {
+      const campaign = await services.campaigns.update(must(matched.params, "id"), {
         name: name ?? undefined,
         mailbox_ids: mailboxIds,
       });
@@ -80,7 +80,7 @@ export async function handleApiV1(
     }
     case "addCampaignStep": {
       const body = objectBody(request.body);
-      const step = await services.campaigns.addStep(matched.params.id, {
+      const step = await services.campaigns.addStep(must(matched.params, "id"), {
         subject: requireString(body, "subject"),
         body: requireBodyString(body),
         delay_days: requireDelay(body),
@@ -96,7 +96,7 @@ export async function handleApiV1(
       if (subject === undefined && text === undefined && delay === undefined) {
         throw new ApiError(400, "validation_error", "Provide subject, body, or delay_days.");
       }
-      const step = await services.campaigns.updateStep(matched.params.id, matched.params.stepId, {
+      const step = await services.campaigns.updateStep(must(matched.params, "id"), must(matched.params, "stepId"), {
         subject: subject ?? undefined,
         body: text ?? undefined,
         delay_days: delay,
@@ -105,24 +105,24 @@ export async function handleApiV1(
       return { status: 200, body: { data: step } };
     }
     case "deleteCampaignStep": {
-      const removed = await services.campaigns.deleteStep(matched.params.id, matched.params.stepId);
+      const removed = await services.campaigns.deleteStep(must(matched.params, "id"), must(matched.params, "stepId"));
       if (!removed) throw new ApiError(404, "not_found", "Step not found.");
       return { status: 200, body: { data: { deleted: true } } };
     }
     case "startCampaign": {
       requireEmpty(request.body);
-      const result = await services.campaigns.start(matched.params.id);
+      const result = await services.campaigns.start(must(matched.params, "id"));
       if (!result) throw new ApiError(404, "not_found", "Campaign not found.");
       return { status: result.started ? 200 : 409, body: { data: result } };
     }
     case "pauseCampaign": {
       requireEmpty(request.body);
-      const campaign = await services.campaigns.pause(matched.params.id);
+      const campaign = await services.campaigns.pause(must(matched.params, "id"));
       if (!campaign) throw new ApiError(404, "not_found", "Campaign not found.");
       return { status: 200, body: { data: campaign } };
     }
     case "getCampaignStats": {
-      const stats = await services.campaigns.stats(matched.params.id);
+      const stats = await services.campaigns.stats(must(matched.params, "id"));
       if (!stats) throw new ApiError(404, "not_found", "Campaign not found.");
       return { status: 200, body: { data: stats } };
     }
@@ -133,7 +133,7 @@ export async function handleApiV1(
       if ((!contactIds || contactIds.length === 0) && !listId) {
         throw new ApiError(400, "validation_error", "Provide contact_ids or list_id.");
       }
-      const enrolled = await services.enrollments.enroll(matched.params.id, {
+      const enrolled = await services.enrollments.enroll(must(matched.params, "id"), {
         contact_ids: contactIds,
         list_id: listId ?? undefined,
       });
@@ -143,26 +143,32 @@ export async function handleApiV1(
     case "listReplies":
       return { status: 200, body: pageBody(await services.replies.list(pageQuery(request.query))) };
     case "getReplyThread": {
-      const thread = await services.replies.getThread(matched.params.id);
+      const thread = await services.replies.getThread(must(matched.params, "id"));
       if (!thread) throw new ApiError(404, "not_found", "Reply not found.");
       return { status: 200, body: { data: thread } };
     }
     case "draftReply": {
       const text = requireBodyString(objectBody(request.body));
-      const draft = await services.replies.saveDraft(matched.params.id, text);
+      const draft = await services.replies.saveDraft(must(matched.params, "id"), text);
       if (!draft) throw new ApiError(404, "not_found", "Reply not found.");
       return { status: 201, body: { data: draft } };
     }
     case "listMailboxes":
       return { status: 200, body: { data: await services.mailboxes.list() } };
     case "getMailboxHealth": {
-      const health = await services.mailboxes.health(matched.params.id);
+      const health = await services.mailboxes.health(must(matched.params, "id"));
       if (!health) throw new ApiError(404, "not_found", "Mailbox not found.");
       return { status: 200, body: { data: health } };
     }
     default:
       throw new ApiError(404, "not_found", "No such API route.");
   }
+}
+
+function must(params: Record<string, string>, name: string): string {
+  const value = params[name];
+  if (!value) throw new ApiError(500, "internal_error", "Missing route parameter.");
+  return value;
 }
 
 export function matchPath(pattern: string, path: string): Record<string, string> | null {

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import { createWarmySenderClient, type FetchLike } from "./client.js";
 import { nextContactStatus, verifyAddresses } from "./verification.js";
 import { warmUpMailbox, type WarmupMailboxInput } from "./warmup.js";

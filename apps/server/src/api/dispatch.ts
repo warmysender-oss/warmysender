@@ -80,7 +80,7 @@ function bearer(headers: Record<string, string | undefined>): string | null {
   const value = header(headers, "authorization");
   if (!value) return null;
   const match = /^Bearer\s+(\S+)$/i.exec(value);
-  return match ? match[1] : null;
+  return match?.[1] ?? null;
 }
 
 function header(headers: Record<string, string | undefined>, name: string): string | undefined {

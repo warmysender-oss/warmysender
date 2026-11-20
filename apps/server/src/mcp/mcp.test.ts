@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import { SAFETY_SENTENCE } from "../api/limits.js";
 import { createMemoryServices } from "../api/memory.js";
 import { handleMcpMessage } from "./jsonrpc.js";

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import { WarmySenderApiError, createWarmySenderClient, type FetchLike } from "./client.js";
 import { WARMY_SENDER_API_BASE } from "./links.js";
 
@@ -25,7 +25,7 @@ const allowance = {
 test("allowance request uses the public base URL and the bearer key", async () => {
   const seen: { url: string; authorization: string; body: string | undefined }[] = [];
   const fetchImpl: FetchLike = async (url, init) => {
-    seen.push({ url, authorization: init.headers.Authorization, body: init.body });
+    seen.push({ url, authorization: init.headers.Authorization ?? "", body: init.body });
     return jsonResponse(200, { data: allowance, meta: { request_id: "req_test" } });
   };
   const client = createWarmySenderClient({ apiKey: "ws_test_only", fetchImpl });

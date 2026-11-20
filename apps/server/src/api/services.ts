@@ -66,7 +66,7 @@ export type CampaignStats = {
   steps: StepStats[];
 };
 
-export type ReplyKind = "reply" | "auto_reply" | "bounce";
+export type ReplyKind = "reply" | "auto_reply" | "bounce" | "other";
 
 export type ReplySummary = {
   id: string;

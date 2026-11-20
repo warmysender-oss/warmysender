@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
-import test from "node:test";
+import { test } from "vitest";
 import { fileURLToPath } from "node:url";
 import { connectUrl, LEADS_SEARCH_URL, MICROSOFT_MAILBOX_URL } from "./warmysender/links.js";
 import { assertDemoDomains, seedDemo } from "./seed/demo-data.js";
@@ -30,7 +30,7 @@ test("server.json matches the MCP registry schema constraints we depend on", () 
 
 test("skills install as npx skills add expects, and plugins point at them", () => {
   const skillsDir = join(root, "skills");
-  const names = readdirSync(skillsDir);
+  const names = readdirSync(skillsDir).filter((name) => !name.startsWith("."));
   assert.deepEqual(names.sort(), [
     "deliverability-checklist",
     "launch-campaign-safely",

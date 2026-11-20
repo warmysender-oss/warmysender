@@ -41,7 +41,7 @@ export async function warmUpMailbox(
 
   const idempotencyKey = `oss-warmup-${mailbox.id}`;
   let warmyId: string;
-  let restored = false;
+  let restored: boolean;
   try {
     const created = await client.createMailbox(
       {

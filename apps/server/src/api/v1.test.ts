@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import { dispatch } from "./dispatch.js";
+import { ApiError } from "./errors.js";
 import { createMemoryServices } from "./memory.js";
 import { openApiDocument } from "./openapi.js";
 import { API_ROUTES } from "./routes.js";
@@ -14,7 +15,8 @@ test("creating a contact rejects a limit field and never records a send", async 
     path: "/contacts",
     query: new URLSearchParams(),
     body: { email: "jane@harbor-dental.test", daily_cap: 500 },
-  }).catch((error: { status: number; code: string }) => error);
+  }).catch((error: unknown) => error);
+  assert.ok(denied instanceof ApiError);
   assert.equal(denied.status, 403);
   assert.equal(denied.code, "limit_locked");
   assert.deepEqual(memory.calls, []);
@@ -27,7 +29,7 @@ test("creating a contact rejects a limit field and never records a send", async 
   });
   assert.equal(created.status, 201);
   assert.equal((created.body as { data: { email: string } }).data.email, "jane@harbor-dental.test");
-  assert.ok(!memory.calls.some((call) => call.toLowerCase().includes("send")));
+  assert.equal(mentionsSend(memory.calls), false);
 });
 
 test("start and draft do not send, and mailbox responses have no credentials", async () => {
@@ -53,7 +55,7 @@ test("start and draft do not send, and mailbox responses have no credentials", a
   assert.equal(started.status, 200);
   assert.equal((started.body as { data: { campaign: { status: string } } }).data.campaign.status, "running");
   assert.ok(memory.calls.includes("campaigns.start"));
-  assert.ok(!memory.calls.some((call) => call.toLowerCase().includes("send")));
+  assert.equal(mentionsSend(memory.calls), false);
 
   const raised = await handleApiV1(memory.services, {
     method: "POST",
@@ -118,6 +120,10 @@ test("openapi lists every route and the dispatch requires a bearer key", async (
   });
   assert.equal(mcpMissing?.status, 401);
 });
+
+function mentionsSend(calls: readonly string[]): boolean {
+  return calls.some((call) => call.toLowerCase().includes("send"));
+}
 
 function dispatchDeps(services: ReturnType<typeof createMemoryServices>["services"]) {
   const warmy: Omit<WarmyHttpDeps, "services"> = {
