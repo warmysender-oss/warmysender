@@ -58,7 +58,7 @@ test("skills install as npx skills add expects, and plugins point at them", () =
   const marketplace = JSON.parse(readFileSync(join(root, ".claude-plugin/marketplace.json"), "utf8")) as {
     plugins: { skills: string[] }[];
   };
-  assert.equal(marketplace.plugins[0]?.skills.length, 4);
+  assert.equal(marketplace.plugins[0]?.skills?.length, 4);
 });
 
 test("public WarmySender links and demo data stay on documented URLs and .test domains", async () => {

@@ -112,12 +112,17 @@ async function readAllResults(client: WarmySenderClient, batchId: string): Promi
   const collected: VerificationResult[] = [];
   let offset = 0;
   const limit = 1000;
-  for (;;) {
+  let more = true;
+  while (more) {
     const page = await client.getVerificationBatchResults(batchId, { limit, offset });
     collected.push(...page.results);
-    if (!page.has_more || page.results.length === 0) return collected;
-    offset += page.results.length;
+    if (!page.has_more || page.results.length === 0) {
+      more = false;
+    } else {
+      offset += page.results.length;
+    }
   }
+  return collected;
 }
 
 export function admissibleToday(error: unknown): number | null {

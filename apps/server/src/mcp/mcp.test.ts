@@ -40,7 +40,7 @@ test("tools/list and tools/call stay inside the scheduler", async () => {
   });
   const limitedResult = limited?.result as { isError: boolean; content: { text: string }[] };
   assert.equal(limitedResult.isError, true);
-  assert.match(limitedResult.content[0].text, /limit_locked/);
+  assert.match(limitedResult.content[0]?.text ?? "", /limit_locked/);
 
   const campaign = await memory.services.campaigns.create({ name: "Harbor intro" });
   await memory.services.campaigns.addStep(campaign.id, { subject: "Hi", body: "Hello", delay_days: 0 });
@@ -53,7 +53,7 @@ test("tools/list and tools/call stay inside the scheduler", async () => {
   });
   const startedResult = started?.result as { isError: boolean; content: { text: string }[] };
   assert.equal(startedResult.isError, false);
-  assert.match(startedResult.content[0].text, /"started":true/);
+  assert.match(startedResult.content[0]?.text ?? "", /"started":true/);
   assert.ok(memory.calls.includes("campaigns.start"));
   assert.ok(!memory.calls.some((call) => call.toLowerCase().includes("send")));
 

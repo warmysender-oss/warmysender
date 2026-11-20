@@ -172,9 +172,11 @@ export function matchPath(pattern: string, path: string): Record<string, string>
   const params: Record<string, string> = {};
   for (let index = 0; index < expected.length; index += 1) {
     const token = expected[index];
+    const value = actual[index];
+    if (token === undefined || value === undefined) return null;
     if (token.startsWith("{") && token.endsWith("}")) {
-      params[token.slice(1, -1)] = decodeURIComponent(actual[index]);
-    } else if (token !== actual[index]) {
+      params[token.slice(1, -1)] = decodeURIComponent(value);
+    } else if (token !== value) {
       return null;
     }
   }
