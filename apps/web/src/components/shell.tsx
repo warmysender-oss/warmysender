@@ -69,7 +69,7 @@ export function Shell() {
 
   return (
     <div className="min-h-screen md:grid md:grid-cols-[240px_1fr]">
-      <aside className="hidden border-r bg-sidebar md:block">{sidebar}</aside>
+      <aside className="hidden border-r bg-sidebar md:sticky md:top-0 md:block md:h-screen md:overflow-y-auto">{sidebar}</aside>
       {open ? (
         <div className="fixed inset-0 z-40 md:hidden">
           <button className="absolute inset-0 bg-black/40" aria-label="Close menu" onClick={() => setOpen(false)} />
@@ -77,7 +77,7 @@ export function Shell() {
         </div>
       ) : null}
       <div className="flex min-h-screen flex-col">
-        <header className="flex h-14 items-center gap-3 border-b px-4">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur">
           <Button className="md:hidden" variant="ghost" size="sm" onClick={() => setOpen((value) => !value)} aria-label="Open menu">
             {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </Button>
