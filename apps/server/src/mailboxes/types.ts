@@ -1,4 +1,4 @@
-import type { SocketSecurity } from "../../../../packages/core/src/mail/types.js"
+import type { MailboxHealthState, SocketSecurity } from "../../../../packages/core/src/mail/index.js"
 
 export type ProbeInput = {
   host: string
@@ -9,34 +9,38 @@ export type ProbeInput = {
   auth: "password" | "xoauth2"
 }
 
+/** Column shape of mailboxes, with timestamps as ISO strings and secrets already encrypted. */
 export type MailboxRecord = {
   id: string
-  provider: "smtp" | "microsoft"
-  presetId: string
   fromName: string
   email: string
+  /** Preset id (gmail, zoho, custom, …) or microsoft. */
+  provider: string
   smtpHost: string
   smtpPort: number
   smtpSecurity: SocketSecurity
   smtpUsername: string
+  smtpPasswordEncrypted: string | null
   imapHost: string
   imapPort: number
   imapSecurity: SocketSecurity
   imapUsername: string
-  dailyCap: number
-  sendingDays: string[]
+  imapPasswordEncrypted: string | null
+  oauthRefreshTokenEncrypted: string | null
+  oauthAccessTokenEncrypted: string | null
+  oauthAccessTokenExpiresAt: string | null
+  sendingDays: number[]
   windowStart: string
   windowEnd: string
-  timeZone: string
-  minGapMinutes: number
-  maxGapMinutes: number
+  timezone: string
+  gapMinMinutes: number
+  gapMaxMinutes: number
+  dailyCap: number
   signature: string
   rampStartedOn: string
-  paused: boolean
-  pauseReason: string | null
-  smtpAuthFailureStreak: number
-  imapAuthFailureStreak: number
-  secretsCiphertext: string
+  health: MailboxHealthState
+  pausedReason: string | null
+  consecutiveAuthFailures: number
   createdAt: string
   updatedAt: string
 }

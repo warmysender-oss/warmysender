@@ -11,6 +11,8 @@ export const GAP_DEFAULT_MIN_MINUTES = 4
 export const GAP_DEFAULT_MAX_MINUTES = 9
 /** A zero gap would remove the pause between sends. */
 export const GAP_HARD_MIN_MINUTES = 1
+/** Matches the mailboxes gap check: a gap longer than a day is rejected. */
+export const GAP_HARD_MAX_MINUTES = 1440
 
 export const SIGNATURE_MAX_CHARS = 10_000
 export const FROM_NAME_MAX_CHARS = 200
@@ -80,7 +82,13 @@ export function validateGapPair(minValue: unknown, maxValue: unknown):
       message: `Maximum gap must be at least ${GAP_HARD_MIN_MINUTES} minute.`,
     })
   }
-  if (min !== null && max !== null && max < min && errors.length === 0) {
+  if (max !== null && max > GAP_HARD_MAX_MINUTES) {
+    errors.push({
+      field: "maxGapMinutes",
+      message: `Maximum gap cannot be more than ${GAP_HARD_MAX_MINUTES} minutes.`,
+    })
+  }
+  if (min !== null && max !== null && max < min && !errors.some((error) => error.field === "maxGapMinutes")) {
     errors.push({
       field: "maxGapMinutes",
       message: "Maximum gap must be greater than or equal to the minimum gap.",

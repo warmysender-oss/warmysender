@@ -3,51 +3,48 @@ export const AUTH_FAILURES_BEFORE_PAUSE = 3
 export const RECONNECT_MESSAGE =
   "Mailbox paused after 3 authentication failures in a row. Reconnect the mailbox before sending again."
 
-export type AuthChannel = "smtp" | "imap"
+/** Matches mailboxes.health: unknown, healthy, or paused. */
+export type MailboxHealthState = "unknown" | "healthy" | "paused"
 
 export type AuthHealth = {
-  paused: boolean
-  pauseReason: string | null
-  smtpAuthFailureStreak: number
-  imapAuthFailureStreak: number
+  health: MailboxHealthState
+  pausedReason: string | null
+  consecutiveAuthFailures: number
 }
 
 export function initialAuthHealth(): AuthHealth {
   return {
-    paused: false,
-    pauseReason: null,
-    smtpAuthFailureStreak: 0,
-    imapAuthFailureStreak: 0,
+    health: "unknown",
+    pausedReason: null,
+    consecutiveAuthFailures: 0,
   }
 }
 
 /** Paused mailboxes stay paused. Callers must not retry a failing login in a loop. */
-export function shouldAttemptLogin(health: AuthHealth): boolean {
-  return !health.paused
+export function shouldAttemptLogin(health: Pick<AuthHealth, "health">): boolean {
+  return health.health !== "paused"
 }
 
-export function applyAuthResult(health: AuthHealth, channel: AuthChannel, ok: boolean): AuthHealth {
-  if (health.paused) return health
-  const key = streakKey(channel)
+/**
+ * One counter for SMTP and IMAP. A success clears it. The third failure in a row pauses the mailbox.
+ * The database stores this single consecutive_auth_failures column.
+ */
+export function applyAuthResult(health: AuthHealth, ok: boolean): AuthHealth {
+  if (health.health === "paused") return health
   if (ok) {
-    return { ...health, [key]: 0 }
+    return { health: "healthy", pausedReason: null, consecutiveAuthFailures: 0 }
   }
-  const next = health[key] + 1
+  const next = health.consecutiveAuthFailures + 1
   if (next >= AUTH_FAILURES_BEFORE_PAUSE) {
     return {
-      ...health,
-      [key]: next,
-      paused: true,
-      pauseReason: RECONNECT_MESSAGE,
+      health: "paused",
+      pausedReason: RECONNECT_MESSAGE,
+      consecutiveAuthFailures: next,
     }
   }
-  return { ...health, [key]: next }
+  return { ...health, consecutiveAuthFailures: next }
 }
 
 export function clearAuthPause(): AuthHealth {
-  return initialAuthHealth()
-}
-
-function streakKey(channel: AuthChannel): "smtpAuthFailureStreak" | "imapAuthFailureStreak" {
-  return channel === "smtp" ? "smtpAuthFailureStreak" : "imapAuthFailureStreak"
+  return { health: "healthy", pausedReason: null, consecutiveAuthFailures: 0 }
 }

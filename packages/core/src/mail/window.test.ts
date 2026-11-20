@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { isInsideSendingWindow, parseSendingWindow } from "./window.js"
+import { isInsideSendingWindow, isoToWeekday, parseSendingWindow, weekdayToIso } from "./window.js"
 
 const windowResult = parseSendingWindow({
   days: ["mon", "tue", "wed", "thu", "fri"],
@@ -20,6 +20,13 @@ describe("sending window", () => {
 
   it("excludes Sunday in the mailbox time zone", () => {
     expect(isInsideSendingWindow(new Date("2026-01-04T18:00:00.000Z"), sendingWindow)).toBe(false)
+  })
+
+  it("maps weekdays to ISO numbers, Monday = 1", () => {
+    expect(weekdayToIso("mon")).toBe(1)
+    expect(weekdayToIso("sun")).toBe(7)
+    expect(isoToWeekday(1)).toBe("mon")
+    expect(isoToWeekday(8)).toBeNull()
   })
 
   it("rejects an overnight window and an unknown time zone", () => {

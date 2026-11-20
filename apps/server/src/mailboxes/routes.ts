@@ -3,7 +3,6 @@ import {
   clearAuthPause,
   MICROSOFT_IMAP,
   MICROSOFT_SMTP,
-  sealSecrets,
   spfExampleForPreset,
   type SecretCodec,
 } from "../../../../packages/core/src/mail/index.js"
@@ -30,7 +29,6 @@ import {
   signOAuthState,
   verifyOAuthState,
 } from "../oauth/microsoft.js"
-import { openSecrets } from "../../../../packages/core/src/mail/secrets.js"
 import { readMicrosoftEnv, type MicrosoftEnv } from "../oauth/microsoft-config.js"
 
 export type RouteRequest = {
@@ -85,16 +83,16 @@ export async function handleMailHttp(request: RouteRequest, deps: MailHttpDeps):
     })
   }
 
-  const deliverability = path.match(/^\/api\/mailboxes\/([^/]+)\/deliverability$/)
-  if (method === "GET" && deliverability) {
-    return requireUser(request, () => mailboxDeliverability(deliverability[1], deps))
+  const deliverabilityId = path.match(/^\/api\/mailboxes\/([^/]+)\/deliverability$/)?.[1]
+  if (method === "GET" && deliverabilityId) {
+    return requireUser(request, () => mailboxDeliverability(deliverabilityId, deps))
   }
-  const test = path.match(/^\/api\/mailboxes\/([^/]+)\/test$/)
-  if (method === "POST" && test) {
+  const testId = path.match(/^\/api\/mailboxes\/([^/]+)\/test$/)?.[1]
+  if (method === "POST" && testId) {
     return requireUser(request, async () => {
-      const ready = await refreshStoredMicrosoftToken(test[1], deps)
+      const ready = await refreshStoredMicrosoftToken(testId, deps)
       if (!ready.ok) return result(ready)
-      const connection = await testStoredMailbox(test[1], {
+      const connection = await testStoredMailbox(testId, {
         store: deps.store,
         codec: deps.codec,
         probes: deps.probes,
@@ -104,15 +102,15 @@ export async function handleMailHttp(request: RouteRequest, deps: MailHttpDeps):
       return { status: 200, body: { connection: connection.value } }
     })
   }
-  const reconnect = path.match(/^\/api\/mailboxes\/([^/]+)\/reconnect$/)
-  if (method === "POST" && reconnect) {
+  const reconnectId = path.match(/^\/api\/mailboxes\/([^/]+)\/reconnect$/)?.[1]
+  if (method === "POST" && reconnectId) {
     return requireUser(request, async () => {
-      const mailbox = await deps.store.findById(reconnect[1])
+      const mailbox = await deps.store.findById(reconnectId)
       if (mailbox?.provider === "microsoft") {
         const start = startMicrosoft(deps)
         return start
       }
-      const updated = await reconnectSmtpMailbox(reconnect[1], request.body, {
+      const updated = await reconnectSmtpMailbox(reconnectId, request.body, {
         store: deps.store,
         codec: deps.codec,
         now: deps.now(),
@@ -121,17 +119,17 @@ export async function handleMailHttp(request: RouteRequest, deps: MailHttpDeps):
       return result(updated)
     })
   }
-  const one = path.match(/^\/api\/mailboxes\/([^/]+)$/)
-  if (one && method === "GET") {
+  const oneId = path.match(/^\/api\/mailboxes\/([^/]+)$/)?.[1]
+  if (oneId && method === "GET") {
     return requireUser(request, async () => {
-      const mailbox = await deps.store.findById(one[1])
+      const mailbox = await deps.store.findById(oneId)
       if (!mailbox) return { status: 404, body: { errors: [{ field: "id", message: "Mailbox not found." }] } }
       return { status: 200, body: { mailbox: toMailboxView(mailbox, deps.now()) } }
     })
   }
-  if (one && method === "PATCH") {
+  if (oneId && method === "PATCH") {
     return requireUser(request, async () => {
-      const updated = await updateMailbox(one[1], request.body, { store: deps.store, codec: deps.codec, now: deps.now() })
+      const updated = await updateMailbox(oneId, request.body, { store: deps.store, codec: deps.codec, now: deps.now() })
       if (!updated.ok) return result(updated)
       return { status: 200, body: { mailbox: updated.value } }
     })
@@ -146,12 +144,15 @@ async function refreshStoredMicrosoftToken(
   const mailbox = await deps.store.findById(id)
   if (!mailbox) return { ok: false, status: 404, errors: [{ field: "id", message: "Mailbox not found." }] }
   if (mailbox.provider !== "microsoft") return { ok: true }
-  const secrets = openSecrets(mailbox.secretsCiphertext, deps.codec)
-  if (secrets.kind !== "microsoft") {
-    return { ok: false, status: 500, errors: [{ field: "secrets", message: "Stored mailbox secrets have the wrong shape." }] }
+  if (!mailbox.oauthRefreshTokenEncrypted || !mailbox.oauthAccessTokenEncrypted || !mailbox.oauthAccessTokenExpiresAt) {
+    return { ok: false, status: 422, errors: [{ field: "connection", message: "This Microsoft mailbox has no refresh token. Sign in again." }] }
   }
   const refreshed = await refreshMicrosoftSecrets({
-    secrets,
+    secrets: {
+      refreshToken: deps.codec.decrypt(mailbox.oauthRefreshTokenEncrypted),
+      accessToken: deps.codec.decrypt(mailbox.oauthAccessTokenEncrypted),
+      accessTokenExpiresAt: mailbox.oauthAccessTokenExpiresAt,
+    },
     env: deps.env(),
     now: deps.now(),
     fetchToken: deps.fetchToken,
@@ -159,7 +160,9 @@ async function refreshStoredMicrosoftToken(
   if (!refreshed.ok) return { ok: false, status: 422, errors: [{ field: "connection", message: refreshed.message }] }
   if (refreshed.refreshed) {
     await deps.store.update(id, {
-      secretsCiphertext: sealSecrets({ kind: "microsoft", ...refreshed.secrets }, deps.codec),
+      oauthRefreshTokenEncrypted: deps.codec.encrypt(refreshed.secrets.refreshToken),
+      oauthAccessTokenEncrypted: deps.codec.encrypt(refreshed.secrets.accessToken),
+      oauthAccessTokenExpiresAt: refreshed.secrets.accessTokenExpiresAt,
       updatedAt: deps.now().toISOString(),
     })
   }
@@ -169,7 +172,7 @@ async function refreshStoredMicrosoftToken(
 async function mailboxDeliverability(id: string, deps: MailHttpDeps): Promise<RouteResponse> {
   const mailbox = await deps.store.findById(id)
   if (!mailbox) return { status: 404, body: { errors: [{ field: "id", message: "Mailbox not found." }] } }
-  const report = await checkDeliverability(mailbox.email, deps.resolver, spfExampleForPreset(mailbox.presetId))
+  const report = await checkDeliverability(mailbox.email, deps.resolver, spfExampleForPreset(mailbox.provider))
   return { status: 200, body: { deliverability: report } }
 }
 
@@ -216,19 +219,12 @@ async function finishMicrosoft(request: RouteRequest, deps: MailHttpDeps): Promi
   if (!token.ok || !token.idToken) return redirectMailboxes("microsoft=token")
   const email = emailFromIdToken(token.idToken)
   if (!email) return redirectMailboxes("microsoft=missing-email")
-  const secrets = {
-    kind: "microsoft" as const,
-    refreshToken: token.refreshToken,
-    accessToken: token.accessToken,
-    accessTokenExpiresAt: token.accessTokenExpiresAt,
-  }
   const existing = await deps.store.findByEmail(email)
   const now = deps.now()
   if (existing) {
     const health = clearAuthPause()
     await deps.store.update(existing.id, {
       provider: "microsoft",
-      presetId: "microsoft",
       smtpHost: MICROSOFT_SMTP.host,
       smtpPort: MICROSOFT_SMTP.port,
       smtpSecurity: MICROSOFT_SMTP.security,
@@ -238,7 +234,9 @@ async function finishMicrosoft(request: RouteRequest, deps: MailHttpDeps): Promi
       imapSecurity: MICROSOFT_IMAP.security,
       imapUsername: email,
       ...health,
-      secretsCiphertext: sealSecrets(secrets, deps.codec),
+      oauthRefreshTokenEncrypted: deps.codec.encrypt(token.refreshToken),
+      oauthAccessTokenEncrypted: deps.codec.encrypt(token.accessToken),
+      oauthAccessTokenExpiresAt: token.accessTokenExpiresAt,
       updatedAt: now.toISOString(),
     })
   } else {
@@ -247,7 +245,9 @@ async function finishMicrosoft(request: RouteRequest, deps: MailHttpDeps): Promi
       microsoftRecordFromToken({
         email,
         fromName,
-        secrets,
+        refreshToken: token.refreshToken,
+        accessToken: token.accessToken,
+        accessTokenExpiresAt: token.accessTokenExpiresAt,
         now,
         codec: deps.codec,
         timeZone: "UTC",

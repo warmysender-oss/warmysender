@@ -6,7 +6,7 @@ export {
   initialAuthHealth,
   shouldAttemptLogin,
 } from "./auth-health.js"
-export type { AuthChannel, AuthHealth } from "./auth-health.js"
+export type { AuthHealth, MailboxHealthState } from "./auth-health.js"
 export { plainConnectionError } from "./errors.js"
 export type { ConnectionErrorLike } from "./errors.js"
 export {
@@ -16,6 +16,7 @@ export {
   FROM_NAME_MAX_CHARS,
   GAP_DEFAULT_MAX_MINUTES,
   GAP_DEFAULT_MIN_MINUTES,
+  GAP_HARD_MAX_MINUTES,
   GAP_HARD_MIN_MINUTES,
   SIGNATURE_MAX_CHARS,
   parseStrictInt,
@@ -62,8 +63,10 @@ export {
   DEFAULT_WINDOW_END,
   DEFAULT_WINDOW_START,
   isInsideSendingWindow,
+  isoToWeekday,
   isValidTimeZone,
   parseClock,
   parseSendingWindow,
+  weekdayToIso,
 } from "./window.js"
 export type { SendingWindow } from "./window.js"

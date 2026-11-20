@@ -10,7 +10,9 @@ export function signOAuthState(secret: string, nowMs: number, nonce = randomByte
 export function verifyOAuthState(token: string, secret: string, nowMs: number): { ok: true } | { ok: false; message: string } {
   const parts = token.split(".")
   if (parts.length !== 2) return { ok: false, message: "The Microsoft sign-in state is invalid. Start sign-in again." }
-  const [payload, signature] = parts
+  const payload = parts[0]
+  const signature = parts[1]
+  if (!payload || !signature) return { ok: false, message: "The Microsoft sign-in state is invalid. Start sign-in again." }
   const expected = createHmac("sha256", secret).update(payload).digest("base64url")
   const left = Buffer.from(signature)
   const right = Buffer.from(expected)
@@ -163,9 +165,10 @@ export function emailFromIdToken(idToken: string): string | null {
 
 function idTokenPayload(idToken: string): Record<string, unknown> | null {
   const parts = idToken.split(".")
-  if (parts.length < 2) return null
+  const body = parts[1]
+  if (!body) return null
   try {
-    const parsed: unknown = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"))
+    const parsed: unknown = JSON.parse(Buffer.from(body, "base64url").toString("utf8"))
     if (!parsed || typeof parsed !== "object") return null
     return parsed as Record<string, unknown>
   } catch {

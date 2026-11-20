@@ -119,6 +119,26 @@ const SHORT_WEEKDAY: Record<string, Weekday> = {
   Sun: "sun",
 }
 
+const ISO_WEEKDAY: Record<Weekday, number> = {
+  mon: 1,
+  tue: 2,
+  wed: 3,
+  thu: 4,
+  fri: 5,
+  sat: 6,
+  sun: 7,
+}
+
+/** ISO weekday: Monday is 1, Sunday is 7. This is the mailboxes.sending_days column. */
+export function weekdayToIso(day: Weekday): number {
+  return ISO_WEEKDAY[day]
+}
+
+export function isoToWeekday(value: number): Weekday | null {
+  const found = (Object.entries(ISO_WEEKDAY) as [Weekday, number][]).find(([, iso]) => iso === value)
+  return found ? found[0] : null
+}
+
 function isWeekday(value: string): value is Weekday {
   return (WEEKDAYS as readonly string[]).includes(value)
 }

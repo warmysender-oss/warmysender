@@ -12,15 +12,15 @@ import {
   GAP_DEFAULT_MAX_MINUTES,
   GAP_DEFAULT_MIN_MINUTES,
   initialAuthHealth,
+  isoToWeekday,
   MICROSOFT_IMAP,
   MICROSOFT_SMTP,
-  openSecrets,
-  sealSecrets,
   shouldAttemptLogin,
   todayInTimeZone,
   validateMailboxSettings,
   validateSmtpPasswords,
-  type MailboxSecretPayload,
+  weekdayToIso,
+  type MailboxSettings,
   type SecretCodec,
 } from "../../../../packages/core/src/mail/index.js"
 import type { MailboxRecord, MailboxStore, MailboxView } from "./types.js"
@@ -29,18 +29,23 @@ import type { ProbeInput } from "./types.js"
 
 export type ServiceResult<T> =
   | { ok: true; value: T }
-  | { ok: false; status: number; errors: { field: string; message: string }[]; connection?: Awaited<ReturnType<typeof testMailboxConnection>> }
+  | {
+      ok: false
+      status: number
+      errors: { field: string; message: string }[]
+      connection?: Awaited<ReturnType<typeof testMailboxConnection>>
+    }
 
 export function toMailboxView(record: MailboxRecord, now: Date): MailboxView {
   const ramp = effectiveDailyCap({
     configuredCap: record.dailyCap,
     rampStartedOn: record.rampStartedOn,
-    today: todayInTimeZone(now, record.timeZone),
+    today: todayInTimeZone(now, record.timezone),
   })
   return {
     id: record.id,
-    provider: record.provider,
-    presetId: record.presetId,
+    provider: record.provider === "microsoft" ? "microsoft" : "smtp",
+    presetId: record.provider,
     fromName: record.fromName,
     email: record.email,
     smtpHost: record.smtpHost,
@@ -56,15 +61,18 @@ export function toMailboxView(record: MailboxRecord, now: Date): MailboxView {
     rampDay: ramp.rampDay,
     inRamp: ramp.inRamp,
     rampLabel: ramp.label,
-    sendingDays: record.sendingDays,
+    sendingDays: record.sendingDays.flatMap((day) => {
+      const name = isoToWeekday(day)
+      return name ? [name] : []
+    }),
     windowStart: record.windowStart,
     windowEnd: record.windowEnd,
-    timeZone: record.timeZone,
-    minGapMinutes: record.minGapMinutes,
-    maxGapMinutes: record.maxGapMinutes,
+    timeZone: record.timezone,
+    minGapMinutes: record.gapMinMinutes,
+    maxGapMinutes: record.gapMaxMinutes,
     signature: record.signature,
-    paused: record.paused,
-    pauseReason: record.pauseReason,
+    paused: record.health === "paused",
+    pauseReason: record.pausedReason,
     createdAt: record.createdAt,
   }
 }
@@ -81,9 +89,6 @@ export async function createSmtpMailbox(
   const input = isRecord(body) ? body : {}
   const settings = validateMailboxSettings({ ...input, provider: "smtp" })
   if (!settings.ok) return { ok: false, status: 400, errors: settings.errors }
-  if (settings.value.provider !== "smtp") {
-    return { ok: false, status: 400, errors: [{ field: "provider", message: "Use Microsoft sign-in for Microsoft mailboxes." }] }
-  }
   const passwords = validateSmtpPasswords({
     smtpPassword: input.smtpPassword,
     imapPassword: input.imapPassword,
@@ -93,24 +98,13 @@ export async function createSmtpMailbox(
   if (existing) {
     return { ok: false, status: 409, errors: [{ field: "email", message: "A mailbox for this address already exists." }] }
   }
-  const health = initialAuthHealth()
-  const nowIso = ctx.now.toISOString()
-  const record: MailboxRecord = {
-    id: randomUUID(),
-    ...settings.value,
-    sendingDays: settings.value.sendingDays,
-    rampStartedOn: todayInTimeZone(ctx.now, settings.value.timeZone),
-    paused: health.paused,
-    pauseReason: health.pauseReason,
-    smtpAuthFailureStreak: health.smtpAuthFailureStreak,
-    imapAuthFailureStreak: health.imapAuthFailureStreak,
-    secretsCiphertext: sealSecrets(
-      { kind: "smtp", smtpPassword: passwords.smtpPassword, imapPassword: passwords.imapPassword },
-      ctx.codec,
-    ),
-    createdAt: nowIso,
-    updatedAt: nowIso,
-  }
+  const record = baseRecord(settings.value, ctx.now, initialAuthHealth(), {
+    smtpPasswordEncrypted: ctx.codec.encrypt(passwords.smtpPassword),
+    imapPasswordEncrypted: ctx.codec.encrypt(passwords.imapPassword),
+    oauthRefreshTokenEncrypted: null,
+    oauthAccessTokenEncrypted: null,
+    oauthAccessTokenExpiresAt: null,
+  })
   await ctx.store.insert(record)
   return { ok: true, value: toMailboxView(record, ctx.now) }
 }
@@ -124,47 +118,34 @@ export async function updateMailbox(
   if (!current) return { ok: false, status: 404, errors: [{ field: "id", message: "Mailbox not found." }] }
   const input = isRecord(body) ? body : {}
   const settings = validateMailboxSettings({
-    ...viewAsDraft(current),
+    ...draftFromRecord(current),
     ...input,
-    provider: current.provider,
-    presetId: input.presetId ?? current.presetId,
+    provider: current.provider === "microsoft" ? "microsoft" : "smtp",
+    presetId: input.presetId ?? current.provider,
   })
   if (!settings.ok) return { ok: false, status: 400, errors: settings.errors }
-  const nextSettings = current.provider === "microsoft"
-    ? {
-        ...settings.value,
-        provider: "microsoft" as const,
-        presetId: "microsoft" as const,
-        smtpHost: MICROSOFT_SMTP.host,
-        smtpPort: MICROSOFT_SMTP.port,
-        smtpSecurity: MICROSOFT_SMTP.security,
-        smtpUsername: settings.value.email,
-        imapHost: MICROSOFT_IMAP.host,
-        imapPort: MICROSOFT_IMAP.port,
-        imapSecurity: MICROSOFT_IMAP.security,
-        imapUsername: settings.value.email,
-      }
-    : settings.value
-  if (nextSettings.email !== current.email) {
-    const taken = await ctx.store.findByEmail(nextSettings.email)
+  const next = current.provider === "microsoft" ? microsoftSettings(settings.value) : settings.value
+  if (next.email !== current.email) {
+    const taken = await ctx.store.findByEmail(next.email)
     if (taken && taken.id !== current.id) {
       return { ok: false, status: 409, errors: [{ field: "email", message: "A mailbox for this address already exists." }] }
     }
   }
-  let secretsCiphertext = current.secretsCiphertext
-  if (current.provider === "smtp" && (input.smtpPassword !== undefined || input.imapPassword !== undefined)) {
-    const existing = openSecrets(current.secretsCiphertext, ctx.codec)
-    if (existing.kind !== "smtp") {
-      return { ok: false, status: 500, errors: [{ field: "secrets", message: "Stored mailbox secrets have the wrong shape." }] }
+  let smtpPasswordEncrypted = current.smtpPasswordEncrypted
+  let imapPasswordEncrypted = current.imapPasswordEncrypted
+  if (current.provider !== "microsoft" && (input.smtpPassword !== undefined || input.imapPassword !== undefined)) {
+    const smtpPassword = nonEmptyString(input.smtpPassword) ?? decrypt(current.smtpPasswordEncrypted, ctx.codec)
+    const imapPassword = nonEmptyString(input.imapPassword) ?? decrypt(current.imapPasswordEncrypted, ctx.codec)
+    if (smtpPassword === null || imapPassword === null) {
+      return { ok: false, status: 500, errors: [{ field: "secrets", message: "Stored mailbox secrets are missing." }] }
     }
-    const smtpPassword = typeof input.smtpPassword === "string" && input.smtpPassword.length > 0 ? input.smtpPassword : existing.smtpPassword
-    const imapPassword = typeof input.imapPassword === "string" && input.imapPassword.length > 0 ? input.imapPassword : existing.imapPassword
-    secretsCiphertext = sealSecrets({ kind: "smtp", smtpPassword, imapPassword }, ctx.codec)
+    smtpPasswordEncrypted = ctx.codec.encrypt(smtpPassword)
+    imapPasswordEncrypted = ctx.codec.encrypt(imapPassword)
   }
   const updated = await ctx.store.update(id, {
-    ...nextSettings,
-    sendingDays: nextSettings.sendingDays,
-    secretsCiphertext,
+    ...columnsFromSettings(next),
+    smtpPasswordEncrypted,
+    imapPasswordEncrypted,
     updatedAt: ctx.now.toISOString(),
   })
   return { ok: true, value: toMailboxView(updated, ctx.now) }
@@ -172,7 +153,6 @@ export async function updateMailbox(
 
 export async function recordMailboxAuth(
   id: string,
-  channel: "smtp" | "imap",
   ok: boolean,
   ctx: { store: MailboxStore; now: Date },
 ): Promise<ServiceResult<MailboxView>> {
@@ -181,11 +161,8 @@ export async function recordMailboxAuth(
   if (!shouldAttemptLogin(current)) {
     return { ok: true, value: toMailboxView(current, ctx.now) }
   }
-  const health = applyAuthResult(current, channel, ok)
-  const updated = await ctx.store.update(id, {
-    ...health,
-    updatedAt: ctx.now.toISOString(),
-  })
+  const health = applyAuthResult(current, ok)
+  const updated = await ctx.store.update(id, { ...health, updatedAt: ctx.now.toISOString() })
   return { ok: true, value: toMailboxView(updated, ctx.now) }
 }
 
@@ -196,7 +173,7 @@ export async function reconnectSmtpMailbox(
 ): Promise<ServiceResult<{ mailbox: MailboxView; connection: Awaited<ReturnType<typeof testMailboxConnection>> }>> {
   const current = await ctx.store.findById(id)
   if (!current) return { ok: false, status: 404, errors: [{ field: "id", message: "Mailbox not found." }] }
-  if (current.provider !== "smtp") {
+  if (current.provider === "microsoft") {
     return {
       ok: false,
       status: 400,
@@ -204,12 +181,13 @@ export async function reconnectSmtpMailbox(
     }
   }
   const input = isRecord(body) ? body : {}
-  const existing = openSecrets(current.secretsCiphertext, ctx.codec)
-  if (existing.kind !== "smtp") {
-    return { ok: false, status: 500, errors: [{ field: "secrets", message: "Stored mailbox secrets have the wrong shape." }] }
+  const storedSmtp = decrypt(current.smtpPasswordEncrypted, ctx.codec)
+  const storedImap = decrypt(current.imapPasswordEncrypted, ctx.codec)
+  const smtpPassword = nonEmptyString(input.smtpPassword) ?? storedSmtp
+  const imapPassword = nonEmptyString(input.imapPassword) ?? storedImap
+  if (!smtpPassword || !imapPassword) {
+    return { ok: false, status: 500, errors: [{ field: "secrets", message: "Stored mailbox secrets are missing." }] }
   }
-  const smtpPassword = typeof input.smtpPassword === "string" && input.smtpPassword.length > 0 ? input.smtpPassword : existing.smtpPassword
-  const imapPassword = typeof input.imapPassword === "string" && input.imapPassword.length > 0 ? input.imapPassword : existing.imapPassword
   const connection = await testMailboxConnection(
     {
       smtp: probeFrom(current, "smtp", smtpPassword, "password"),
@@ -225,10 +203,10 @@ export async function reconnectSmtpMailbox(
       connection,
     }
   }
-  const health = clearAuthPause()
   const updated = await ctx.store.update(id, {
-    ...health,
-    secretsCiphertext: sealSecrets({ kind: "smtp", smtpPassword, imapPassword }, ctx.codec),
+    ...clearAuthPause(),
+    smtpPasswordEncrypted: ctx.codec.encrypt(smtpPassword),
+    imapPasswordEncrypted: ctx.codec.encrypt(imapPassword),
     updatedAt: ctx.now.toISOString(),
   })
   return { ok: true, value: { mailbox: toMailboxView(updated, ctx.now), connection } }
@@ -240,18 +218,25 @@ export async function testStoredMailbox(
 ): Promise<ServiceResult<Awaited<ReturnType<typeof testMailboxConnection>>>> {
   const current = await ctx.store.findById(id)
   if (!current) return { ok: false, status: 404, errors: [{ field: "id", message: "Mailbox not found." }] }
-  const secrets = openSecrets(current.secretsCiphertext, ctx.codec)
-  if (secrets.kind === "smtp") {
+  if (current.provider !== "microsoft") {
+    const smtpPassword = decrypt(current.smtpPasswordEncrypted, ctx.codec)
+    const imapPassword = decrypt(current.imapPasswordEncrypted, ctx.codec)
+    if (!smtpPassword || !imapPassword) {
+      return { ok: false, status: 500, errors: [{ field: "secrets", message: "Stored mailbox secrets are missing." }] }
+    }
     const connection = await testMailboxConnection(
       {
-        smtp: probeFrom(current, "smtp", secrets.smtpPassword, "password"),
-        imap: probeFrom(current, "imap", secrets.imapPassword, "password"),
+        smtp: probeFrom(current, "smtp", smtpPassword, "password"),
+        imap: probeFrom(current, "imap", imapPassword, "password"),
       },
       ctx.probes,
     )
     return { ok: true, value: connection }
   }
-  const token = ctx.accessToken ?? secrets.accessToken
+  const token = ctx.accessToken ?? decrypt(current.oauthAccessTokenEncrypted, ctx.codec)
+  if (!token) {
+    return { ok: false, status: 422, errors: [{ field: "connection", message: "This Microsoft mailbox has no access token. Sign in again." }] }
+  }
   const connection = await testMailboxConnection(
     {
       smtp: probeFrom(current, "smtp", token, "xoauth2"),
@@ -265,41 +250,46 @@ export async function testStoredMailbox(
 export function microsoftRecordFromToken(input: {
   email: string
   fromName: string
-  secrets: Extract<MailboxSecretPayload, { kind: "microsoft" }>
+  refreshToken: string
+  accessToken: string
+  accessTokenExpiresAt: string
   now: Date
   codec: SecretCodec
   timeZone: string
 }): MailboxRecord {
+  const timeZone = input.timeZone || DEFAULT_TIME_ZONE
   const health = initialAuthHealth()
   const nowIso = input.now.toISOString()
   return {
     id: randomUUID(),
     provider: "microsoft",
-    presetId: "microsoft",
     fromName: input.fromName,
     email: input.email,
     smtpHost: MICROSOFT_SMTP.host,
     smtpPort: MICROSOFT_SMTP.port,
     smtpSecurity: MICROSOFT_SMTP.security,
     smtpUsername: input.email,
+    smtpPasswordEncrypted: null,
     imapHost: MICROSOFT_IMAP.host,
     imapPort: MICROSOFT_IMAP.port,
     imapSecurity: MICROSOFT_IMAP.security,
     imapUsername: input.email,
+    imapPasswordEncrypted: null,
+    oauthRefreshTokenEncrypted: input.codec.encrypt(input.refreshToken),
+    oauthAccessTokenEncrypted: input.codec.encrypt(input.accessToken),
+    oauthAccessTokenExpiresAt: input.accessTokenExpiresAt,
     dailyCap: DAILY_CAP_DEFAULT,
-    sendingDays: [...DEFAULT_SENDING_DAYS],
+    sendingDays: DEFAULT_SENDING_DAYS.map(weekdayToIso),
     windowStart: DEFAULT_WINDOW_START,
     windowEnd: DEFAULT_WINDOW_END,
-    timeZone: input.timeZone || DEFAULT_TIME_ZONE,
-    minGapMinutes: GAP_DEFAULT_MIN_MINUTES,
-    maxGapMinutes: GAP_DEFAULT_MAX_MINUTES,
+    timezone: timeZone,
+    gapMinMinutes: GAP_DEFAULT_MIN_MINUTES,
+    gapMaxMinutes: GAP_DEFAULT_MAX_MINUTES,
     signature: "",
-    rampStartedOn: todayInTimeZone(input.now, input.timeZone),
-    paused: health.paused,
-    pauseReason: health.pauseReason,
-    smtpAuthFailureStreak: health.smtpAuthFailureStreak,
-    imapAuthFailureStreak: health.imapAuthFailureStreak,
-    secretsCiphertext: sealSecrets(input.secrets, input.codec),
+    rampStartedOn: todayInTimeZone(input.now, timeZone),
+    health: health.health,
+    pausedReason: health.pausedReason,
+    consecutiveAuthFailures: health.consecutiveAuthFailures,
     createdAt: nowIso,
     updatedAt: nowIso,
   }
@@ -318,6 +308,120 @@ export function applyPresetBody(presetId: string, email: string): Record<string,
     imapSecurity: preset.imap.security,
     smtpUsername: preset.usernameIsEmail ? email : "",
     imapUsername: preset.usernameIsEmail ? email : "",
+  }
+}
+
+function baseRecord(
+  settings: MailboxSettings,
+  now: Date,
+  health: ReturnType<typeof initialAuthHealth>,
+  secrets: Pick<
+    MailboxRecord,
+    | "smtpPasswordEncrypted"
+    | "imapPasswordEncrypted"
+    | "oauthRefreshTokenEncrypted"
+    | "oauthAccessTokenEncrypted"
+    | "oauthAccessTokenExpiresAt"
+  >,
+): MailboxRecord {
+  const nowIso = now.toISOString()
+  return {
+    id: randomUUID(),
+    ...columnsFromSettings(settings),
+    ...secrets,
+    rampStartedOn: todayInTimeZone(now, settings.timeZone),
+    health: health.health,
+    pausedReason: health.pausedReason,
+    consecutiveAuthFailures: health.consecutiveAuthFailures,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+  }
+}
+
+function columnsFromSettings(settings: MailboxSettings): Pick<
+  MailboxRecord,
+  | "fromName"
+  | "email"
+  | "provider"
+  | "smtpHost"
+  | "smtpPort"
+  | "smtpSecurity"
+  | "smtpUsername"
+  | "imapHost"
+  | "imapPort"
+  | "imapSecurity"
+  | "imapUsername"
+  | "dailyCap"
+  | "sendingDays"
+  | "windowStart"
+  | "windowEnd"
+  | "timezone"
+  | "gapMinMinutes"
+  | "gapMaxMinutes"
+  | "signature"
+> {
+  return {
+    fromName: settings.fromName,
+    email: settings.email,
+    provider: settings.provider === "microsoft" ? "microsoft" : settings.presetId,
+    smtpHost: settings.smtpHost,
+    smtpPort: settings.smtpPort,
+    smtpSecurity: settings.smtpSecurity,
+    smtpUsername: settings.smtpUsername,
+    imapHost: settings.imapHost,
+    imapPort: settings.imapPort,
+    imapSecurity: settings.imapSecurity,
+    imapUsername: settings.imapUsername,
+    dailyCap: settings.dailyCap,
+    sendingDays: settings.sendingDays.map(weekdayToIso),
+    windowStart: settings.windowStart,
+    windowEnd: settings.windowEnd,
+    timezone: settings.timeZone,
+    gapMinMinutes: settings.minGapMinutes,
+    gapMaxMinutes: settings.maxGapMinutes,
+    signature: settings.signature,
+  }
+}
+
+function microsoftSettings(settings: MailboxSettings): MailboxSettings {
+  return {
+    ...settings,
+    provider: "microsoft",
+    presetId: "microsoft",
+    smtpHost: MICROSOFT_SMTP.host,
+    smtpPort: MICROSOFT_SMTP.port,
+    smtpSecurity: MICROSOFT_SMTP.security,
+    smtpUsername: settings.email,
+    imapHost: MICROSOFT_IMAP.host,
+    imapPort: MICROSOFT_IMAP.port,
+    imapSecurity: MICROSOFT_IMAP.security,
+    imapUsername: settings.email,
+  }
+}
+
+function draftFromRecord(record: MailboxRecord): Record<string, unknown> {
+  const view = toMailboxView(record, new Date())
+  return {
+    fromName: view.fromName,
+    email: view.email,
+    provider: view.provider,
+    presetId: view.presetId,
+    smtpHost: view.smtpHost,
+    smtpPort: view.smtpPort,
+    smtpSecurity: view.smtpSecurity,
+    smtpUsername: view.smtpUsername,
+    imapHost: view.imapHost,
+    imapPort: view.imapPort,
+    imapSecurity: view.imapSecurity,
+    imapUsername: view.imapUsername,
+    dailyCap: view.dailyCap,
+    sendingDays: view.sendingDays,
+    windowStart: view.windowStart,
+    windowEnd: view.windowEnd,
+    timeZone: view.timeZone,
+    minGapMinutes: view.minGapMinutes,
+    maxGapMinutes: view.maxGapMinutes,
+    signature: view.signature,
   }
 }
 
@@ -342,8 +446,13 @@ function probeFrom(record: MailboxRecord, side: "smtp" | "imap", password: strin
   }
 }
 
-function viewAsDraft(record: MailboxRecord): Record<string, unknown> {
-  return { ...record }
+function decrypt(payload: string | null, codec: SecretCodec): string | null {
+  if (!payload) return null
+  return codec.decrypt(payload)
+}
+
+function nonEmptyString(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

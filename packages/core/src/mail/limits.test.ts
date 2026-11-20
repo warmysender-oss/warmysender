@@ -28,12 +28,14 @@ describe("gaps", () => {
     expect(validateGapPair(4, 9)).toEqual({ ok: true, minGapMinutes: 4, maxGapMinutes: 9 })
   })
 
-  it("rejects a zero gap and a max below the min", () => {
+  it("rejects a zero gap, a max below the min, and a gap past 1440 minutes", () => {
     expect(validateGapPair(0, 9).ok).toBe(false)
     const backwards = validateGapPair(10, 4)
     expect(backwards.ok).toBe(false)
     if (!backwards.ok) {
       expect(backwards.errors.some((error) => error.field === "maxGapMinutes")).toBe(true)
     }
+    expect(validateGapPair(4, 1441).ok).toBe(false)
+    expect(validateGapPair(4, 1440)).toEqual({ ok: true, minGapMinutes: 4, maxGapMinutes: 1440 })
   })
 })
