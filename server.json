@@ -1,0 +1,51 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.warmysender-oss/warmysender",
+  "title": "WarmySender",
+  "description": "Self-hosted cold email campaigns, contacts, and inbox. Tools never send or raise limits.",
+  "websiteUrl": "https://github.com/warmysender-oss/warmysender",
+  "repository": {
+    "url": "https://github.com/warmysender-oss/warmysender",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "http://{host}/mcp",
+      "variables": {
+        "host": {
+          "description": "Host of your self-hosted WarmySender, with no scheme and no path. Local install: localhost:3000",
+          "isRequired": true,
+          "placeholder": "localhost:3000"
+        }
+      },
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "Bearer token: the word Bearer, a space, then an API key from Settings → API keys.",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    },
+    {
+      "type": "streamable-http",
+      "url": "https://{host}/mcp",
+      "variables": {
+        "host": {
+          "description": "Host of your self-hosted WarmySender when it is served over HTTPS, with no scheme and no path.",
+          "isRequired": true
+        }
+      },
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "Bearer token: the word Bearer, a space, then an API key from Settings → API keys.",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}
