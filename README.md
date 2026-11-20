@@ -102,7 +102,7 @@ Limits are code. An agent cannot raise them.
 | Unified inbox | Yes | Yes |
 | REST API | Yes | Yes |
 | MCP for AI agents | Yes | Yes |
-| Warmup network | — | Yes |
+| Warmup network | Connect a WarmySender key | Yes |
 | Email verification | Connect a WarmySender key | Yes |
 | Leads database | Connect a WarmySender key | Yes |
 | LinkedIn | — | Yes |
