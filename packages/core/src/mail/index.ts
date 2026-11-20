@@ -70,3 +70,13 @@ export {
   weekdayToIso,
 } from "./window.js"
 export type { SendingWindow } from "./window.js"
+export {
+  MICROSOFT_SCOPES,
+  accessTokenNeedsRefresh,
+  buildTokenRequest,
+  microsoftAvailability,
+  readTokenResponse,
+  redirectUriFromPublicUrl,
+  refreshMicrosoftSecrets,
+} from "./microsoft-token.js"
+export type { MicrosoftAvailability, MicrosoftSecrets, MicrosoftTokenEnv, TokenRequest } from "./microsoft-token.js"

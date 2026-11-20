@@ -15,6 +15,7 @@ import { invitesRouter } from "./routes/invites.js";
 import type { FetchLike } from "./warmysender/client.js";
 import type { ReplyTransport } from "./inbox/send-reply.js";
 import { setupRouter, statsRouter } from "./stats/routes.js";
+import { unsubscribeRouter } from "./unsubscribe/route.js";
 import "./types.js";
 
 export type CreateAppOptions = {
@@ -47,6 +48,7 @@ export function createApp(options: CreateAppOptions): Express {
   app.get(["/health", "/api/health"], (_req, res) => {
     res.json({ ok: true });
   });
+  app.use(unsubscribeRouter(db));
   app.use("/api/auth", authRouter(db, config));
   app.use("/api/invites", invitesRouter(db, config));
   app.use("/api/api-keys", apiKeysRouter(db));
@@ -65,7 +67,7 @@ export function createApp(options: CreateAppOptions): Express {
         next();
         return;
       }
-      if (req.path.startsWith("/api") || req.path === "/mcp" || req.path === "/health") {
+      if (req.path.startsWith("/api") || req.path === "/mcp" || req.path === "/health" || req.path.startsWith("/u/")) {
         next();
         return;
       }

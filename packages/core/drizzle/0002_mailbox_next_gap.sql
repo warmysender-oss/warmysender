@@ -1,0 +1,2 @@
+ALTER TABLE "mailboxes" ADD COLUMN "next_gap_minutes" integer;--> statement-breakpoint
+ALTER TABLE "mailboxes" ADD CONSTRAINT "mailboxes_next_gap_chk" CHECK ("mailboxes"."next_gap_minutes" is null or ("mailboxes"."next_gap_minutes" >= 1 and "mailboxes"."next_gap_minutes" <= 1440));
