@@ -9,3 +9,9 @@
 7. No guesses: read https://warmysender.com/api/v1/openapi.json for WarmySender shapes; never call it with a real key (mock it in tests).
 8. Write fresh code; nothing from any private WarmySender repo. `.test` domains only in demo data. No secrets, no IPs, no ticket ids.
 9. PR description: what was built, files, test output, what is not done and why, open questions.
+
+## Running in parallel with Task 01 (added 2026-11-20 for speed)
+If `main` does not yet contain the Task 01 foundation (`packages/core/src/db/schema.ts`, `apps/`), do NOT create root config, package.json workspaces, Docker files or the schema yourself. Instead:
+1. Write your module's pure logic + unit tests inside your lane (plain TypeScript functions with their own local input/output types).
+2. Every ~5 minutes run `git fetch origin main` and check for the foundation.
+3. When it lands: rebase onto `origin/main`, wire your logic into the real schema/server/web shell, run `pnpm typecheck && pnpm lint && pnpm test`, then open your PR.
