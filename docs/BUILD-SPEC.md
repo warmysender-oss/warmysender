@@ -13,7 +13,7 @@
 3. **Safety limits are code, not settings people can blow past:** per-mailbox daily cap (default 30, hard max 50), sending window, random gap between sends, ramp for new mailboxes, stop on reply, stop on bounce, global suppression, one-click unsubscribe. An agent can never raise a limit.
 4. **Agents never send a message directly.** MCP/API tools create and start campaigns; the scheduler sends. Reply drafting saves a draft a human sends from the inbox.
 5. **Demo and test data use `.test` domains only** (e.g. `jane@harbor-dental.test`). No real people.
-6. **Commit locally after each milestone with a clear message. Do NOT push** — the reviewer (Claude) checks each milestone first.
+6. **Work on your own branch and open a PR to `main`** (see `docs/tasks/00-RULES-FOR-EVERY-AGENT.md`). Never push to `main` directly — the reviewer (Claude) checks and merges each PR.
 7. Keep the machine responsive (16 GB Mac): one dev server at a time, stop containers you started when a milestone is done.
 
 ## 2. Stack (chosen for easy self-hosting and forking)
@@ -97,7 +97,7 @@ User pastes a WarmySender API key (`ws_…`). Base URL `https://warmysender.com/
 ## 4. README (write in milestone 8, Postiz/OpenSEO style)
 Title "WarmySender — open-source cold email". One line: "Open-source cold email you can self-host. The open-source Instantly alternative." Demo GIF (seeded `.test` data), one-command install, features list, "Works with your AI agent" (all six agents + MCP), self-hosting docs links, **"Hosted version: WarmySender — adds warmup, email verification, leads and LinkedIn. New accounts get Pro at $9/month with the sign-up offer → https://warmysender.com"**, star call-to-action, AGPL note, support → https://warmysender.com/support (never an email address).
 
-## 5. Milestones (commit after each, do not push)
+## 5. Milestones (split into `docs/tasks/01..07`, one PR each)
 1. Monorepo skeleton, Docker compose, Postgres, auth (first user admin, invites), API keys, empty UI shell.
 2. Mailboxes: SMTP/IMAP + test connection, Microsoft sign-in with own app, encrypted secrets, ramp + caps model.
 3. Contacts + CSV import + lists + suppression.
