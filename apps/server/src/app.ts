@@ -67,7 +67,7 @@ export function createApp(options: CreateAppOptions): Express {
         next();
         return;
       }
-      if (req.path.startsWith("/api") || req.path === "/mcp" || req.path === "/health") {
+      if (req.path.startsWith("/api") || req.path === "/mcp" || req.path === "/health" || req.path.startsWith("/u/")) {
         next();
         return;
       }

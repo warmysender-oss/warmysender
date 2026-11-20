@@ -1,3 +1,4 @@
+export { appendSignature, missingRequiredVariables, templateContact } from "./render-body.js";
 export {
   applyUnsubscribeLink,
   unsubscribeHeaders,

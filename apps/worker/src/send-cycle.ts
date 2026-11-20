@@ -2,12 +2,15 @@ import {
   buildOutgoingEmail,
   createMessageId,
   effectsForDelivery,
+  effectsForTemplateMiss,
   formatSendLog,
   planSendTick,
   type CycleEffect,
   type MailboxSnapshot,
+  type OutgoingEmail,
   type PlanResult,
   type SendCandidate,
+  type SendDecision,
   type SmtpTransport,
   type SuppressionEntry,
 } from "@warmysender/core";
@@ -21,6 +24,10 @@ export type SendCycleInput = {
   transport: SmtpTransport;
   rng?: () => number;
   newId?: () => string;
+  /** Runs after the message is built and before SMTP. The repository stores the pending row here. */
+  beforeSend?: (input: { decision: SendDecision; email: OutgoingEmail }) => Promise<void>;
+  /** Test hook: the pending row is stored, then the process stops before SMTP. */
+  stopAfterPersist?: boolean;
 };
 
 export type SendCycleResult = {
@@ -56,19 +63,44 @@ export async function runSendCycle(input: SendCycleInput): Promise<SendCycleResu
       fromName: mailbox.fromName ?? decision.candidate.fromName,
       toAddress: decision.candidate.contactEmail,
       messageId: createMessageId(fromAddress, newId()),
+      signature: mailbox.signature,
+      firstName: decision.candidate.firstName,
+      lastName: decision.candidate.lastName,
+      company: decision.candidate.company,
+      title: decision.candidate.title,
+      customFields: decision.candidate.customFields,
     });
     if (!emailBuilt.ok) {
+      if (emailBuilt.reason === "missing_variable") {
+        effects.push(...effectsForTemplateMiss({ decision, fields: emailBuilt.fields ?? [] }));
+      } else {
+        effects.push({
+          type: "log",
+          line: formatSendLog("skipped", {
+            reason: emailBuilt.reason,
+            mailbox: decision.mailboxId,
+            enrollment: decision.enrollmentId,
+            contact: decision.contactId,
+          }),
+        });
+      }
+      continue;
+    }
+    try {
+      await input.beforeSend?.({ decision, email: emailBuilt.email });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "send prepare failed";
       effects.push({
         type: "log",
-        line: formatSendLog("skipped", {
-          reason: emailBuilt.reason,
+        line: formatSendLog("failed", {
+          reason: message,
           mailbox: decision.mailboxId,
           enrollment: decision.enrollmentId,
-          contact: decision.contactId,
         }),
       });
       continue;
     }
+    if (input.stopAfterPersist) continue;
     let result: Awaited<ReturnType<SmtpTransport["send"]>>;
     try {
       result = await input.transport.send(emailBuilt.email, decision.mailboxId);

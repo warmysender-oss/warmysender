@@ -1,4 +1,5 @@
 import { and, asc, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import { claimMailboxes, releaseMailboxClaims } from "./send-lock.js";
 import { runSendCycle } from "./send-cycle.js";
 import {
   auditLog,
@@ -13,6 +14,8 @@ import {
   suppressions,
   unsubscribeTokens,
   MAX_SEND_ATTEMPTS,
+  formatSendLog,
+  inFlightDisposition,
   type AppDatabase,
   type CycleEffect,
   type MailboxSnapshot,
@@ -27,6 +30,13 @@ export type PreparedSend = {
   suppressions: SuppressionEntry[];
   inFlightMailboxIds: string[];
   tokens: UnsubscribeTokenInsert[];
+  uncertain: UncertainSend[];
+};
+
+export type UncertainSend = {
+  messageId: string;
+  enrollmentId: string;
+  mailboxId: string;
 };
 
 export type UnsubscribeTokenInsert = {
@@ -49,6 +59,11 @@ export async function loadDueCandidates(db: AppDatabase, now: Date, publicUrl: s
       contactId: enrollments.contactId,
       contactEmail: contacts.email,
       contactStatus: contacts.status,
+      firstName: contacts.firstName,
+      lastName: contacts.lastName,
+      company: contacts.company,
+      title: contacts.title,
+      customFields: contacts.customFields,
       mailboxId: enrollments.mailboxId,
       currentStep: enrollments.currentStep,
       nextSendAt: enrollments.nextSendAt,
@@ -111,7 +126,25 @@ export async function loadDueCandidates(db: AppDatabase, now: Date, publicUrl: s
 
   const mailboxById = new Map(mailboxRows.map((row) => [row.id, row]));
   const tokens: UnsubscribeTokenInsert[] = [];
-  const candidates: SendCandidate[] = due.map((row) => {
+  const uncertain: UncertainSend[] = [];
+  const candidates: SendCandidate[] = [];
+  for (const row of due) {
+    const history = priorMessages.filter((message) => message.enrollmentId === row.enrollmentId);
+    const sentForThread = [...history].reverse().find((message) => message.status === "sent" && message.messageId);
+    const current = [...history].reverse().find((message) => message.stepId === row.stepId);
+    const disposition = current
+      ? inFlightDisposition({
+          status: current.status,
+          sendStartedAt: current.sendStartedAt,
+          nextAttemptAt: current.nextAttemptAt,
+          now,
+        })
+      : "none";
+    if (disposition === "in_flight") continue;
+    if (disposition === "uncertain" && current) {
+      uncertain.push({ messageId: current.id, enrollmentId: row.enrollmentId, mailboxId: current.mailboxId });
+      continue;
+    }
     const token = generateToken("unsub");
     tokens.push({
       plaintext: token.plaintext,
@@ -120,9 +153,6 @@ export async function loadDueCandidates(db: AppDatabase, now: Date, publicUrl: s
       campaignId: row.campaignId,
       enrollmentId: row.enrollmentId,
     });
-    const history = priorMessages.filter((message) => message.enrollmentId === row.enrollmentId);
-    const sentForThread = [...history].reverse().find((message) => message.status === "sent" && message.messageId);
-    const current = [...history].reverse().find((message) => message.stepId === row.stepId);
     const next = steps.find((step) => step.campaignId === row.campaignId && step.position === row.currentStep + 1);
     const assigned = row.mailboxId ? mailboxById.get(row.mailboxId) : undefined;
     let attempts = 0;
@@ -132,7 +162,7 @@ export async function loadDueCandidates(db: AppDatabase, now: Date, publicUrl: s
       attempts = current.attemptCount;
       retryAt = current.nextAttemptAt;
     }
-    return {
+    candidates.push({
       enrollmentId: row.enrollmentId,
       enrollmentStatus: row.enrollmentStatus as SendCandidate["enrollmentStatus"],
       campaignId: row.campaignId,
@@ -140,6 +170,11 @@ export async function loadDueCandidates(db: AppDatabase, now: Date, publicUrl: s
       contactId: row.contactId,
       contactEmail: row.contactEmail,
       contactStatus: row.contactStatus as SendCandidate["contactStatus"],
+      firstName: row.firstName,
+      lastName: row.lastName,
+      company: row.company,
+      title: row.title,
+      customFields: stringFields(row.customFields),
       mailboxId: row.mailboxId,
       mailboxChoices: choicesByCampaign.get(row.campaignId) ?? [],
       stepId: row.stepId,
@@ -159,8 +194,8 @@ export async function loadDueCandidates(db: AppDatabase, now: Date, publicUrl: s
       publicUrl,
       unsubscribeToken: token.plaintext,
       nextStep: next ? { stepNumber: next.position, delayDays: next.delayDays } : null,
-    };
-  });
+    });
+  }
 
   return {
     mailboxes: mailboxRows.map((row) => ({
@@ -177,6 +212,8 @@ export async function loadDueCandidates(db: AppDatabase, now: Date, publicUrl: s
       rampStartedOn: row.rampStartedOn,
       paused: row.health === "paused",
       consecutiveAuthFailures: row.consecutiveAuthFailures,
+      consecutivePolicyFailures: row.consecutivePolicyFailures,
+      signature: row.signature,
       sentAtTimes: sentByMailbox.get(row.id) ?? [],
       nextGapMinutes: row.nextGapMinutes,
     })),
@@ -187,6 +224,7 @@ export async function loadDueCandidates(db: AppDatabase, now: Date, publicUrl: s
     })),
     inFlightMailboxIds: [],
     tokens,
+    uncertain,
   };
 }
 
@@ -238,7 +276,8 @@ export async function applyCycleEffects(
           stepId: message.stepId,
           mailboxId: message.mailboxId,
           contactId: message.contactId,
-          messageId: message.status === "sent" ? message.messageId : null,
+          messageId: message.messageId ? message.messageId : null,
+          sendStartedAt: null,
           inReplyTo: message.inReplyTo,
           referencesHeader: message.references,
           subject: message.subject,
@@ -282,6 +321,7 @@ export async function applyCycleEffects(
             lastSendAt: effect.update.appendSentAt,
             nextGapMinutes: effect.update.nextGapMinutes,
             consecutiveAuthFailures: effect.update.consecutiveAuthFailures,
+            consecutivePolicyFailures: effect.update.consecutivePolicyFailures,
             health: effect.update.paused === true ? "paused" : undefined,
             pausedReason: effect.update.pausedReason,
             updatedAt: now,
@@ -303,19 +343,122 @@ export async function executeSendTick(input: {
   publicUrl: string;
   transport: SmtpTransport;
   rng?: () => number;
+  stopAfterPersist?: boolean;
 }): Promise<void> {
   const loaded = await loadDueCandidates(input.db, input.now, input.publicUrl);
-  await storeUnsubscribeTokens(input.db, loaded.tokens);
-  const result = await runSendCycle({
-    now: input.now,
-    mailboxes: loaded.mailboxes,
-    candidates: loaded.candidates,
-    suppressions: loaded.suppressions,
-    inFlightMailboxIds: loaded.inFlightMailboxIds,
-    transport: input.transport,
-    rng: input.rng,
-  });
-  await applyCycleEffects(input.db, result.effects, input.now);
+  const mailboxIds = new Set<string>();
+  for (const candidate of loaded.candidates) {
+    if (candidate.mailboxId) mailboxIds.add(candidate.mailboxId);
+    for (const choice of candidate.mailboxChoices) mailboxIds.add(choice);
+  }
+  for (const row of loaded.uncertain) mailboxIds.add(row.mailboxId);
+  const claim = await claimMailboxes(input.db, [...mailboxIds], input.now);
+  const claimed = new Set(claim.ids);
+  try {
+    await settleUncertain(
+      input.db,
+      loaded.uncertain.filter((row) => claimed.has(row.mailboxId)),
+      input.now,
+    );
+    const candidates = loaded.candidates.flatMap((candidate) => {
+      if (candidate.mailboxId) return claimed.has(candidate.mailboxId) ? [candidate] : [];
+      const choices = candidate.mailboxChoices.filter((id) => claimed.has(id));
+      return choices.length > 0 ? [{ ...candidate, mailboxChoices: choices }] : [];
+    });
+    const tokens = loaded.tokens.filter((token) =>
+      candidates.some((candidate) => candidate.enrollmentId === token.enrollmentId),
+    );
+    await storeUnsubscribeTokens(input.db, tokens);
+    const result = await runSendCycle({
+      now: input.now,
+      mailboxes: loaded.mailboxes.filter((mailbox) => claimed.has(mailbox.id)),
+      candidates,
+      suppressions: loaded.suppressions,
+      inFlightMailboxIds: [],
+      transport: input.transport,
+      rng: input.rng,
+      stopAfterPersist: input.stopAfterPersist,
+      beforeSend: async ({ decision, email }) => {
+        await persistInFlightSend(input.db, decision, email, input.now);
+      },
+    });
+    if (!input.stopAfterPersist) await applyCycleEffects(input.db, result.effects, input.now);
+  } finally {
+    await releaseMailboxClaims(input.db, claim.ids, claim.until);
+  }
+}
+
+async function persistInFlightSend(
+  db: AppDatabase,
+  decision: { mailboxId: string; enrollmentId: string; contactId: string; campaignId: string; stepId: string; candidate: { attempts: number } },
+  email: { messageId: string; subject: string; text: string; html: string | null; inReplyTo: string | null; references: string | null },
+  now: Date,
+): Promise<void> {
+  const values = {
+    enrollmentId: decision.enrollmentId,
+    campaignId: decision.campaignId,
+    stepId: decision.stepId,
+    mailboxId: decision.mailboxId,
+    contactId: decision.contactId,
+    messageId: email.messageId,
+    inReplyTo: email.inReplyTo,
+    referencesHeader: email.references,
+    subject: email.subject,
+    bodyText: email.text,
+    bodyHtml: email.html,
+    status: "pending" as const,
+    error: null,
+    attemptCount: decision.candidate.attempts + 1,
+    nextAttemptAt: null,
+    sendStartedAt: now,
+    sentAt: null,
+  };
+  const existing = await db
+    .select({ id: messages.id, status: messages.status })
+    .from(messages)
+    .where(and(eq(messages.enrollmentId, decision.enrollmentId), eq(messages.stepId, decision.stepId)))
+    .limit(1);
+  const row = existing[0];
+  if (row?.status === "sent") throw new Error("step already sent");
+  if (row) await db.update(messages).set(values).where(eq(messages.id, row.id));
+  else await db.insert(messages).values(values);
+}
+
+async function settleUncertain(db: AppDatabase, rows: readonly UncertainSend[], now: Date): Promise<void> {
+  for (const row of rows) {
+    const updated = await db
+      .update(messages)
+      .set({ status: "failed", error: "outcome_unknown", sendStartedAt: null, nextAttemptAt: null })
+      .where(and(eq(messages.id, row.messageId), eq(messages.status, "pending")))
+      .returning({ id: messages.id });
+    if (updated.length === 0) continue;
+    await db
+      .update(enrollments)
+      .set({ status: "stopped", stopReason: "outcome_unknown", updatedAt: now })
+      .where(and(eq(enrollments.id, row.enrollmentId), eq(enrollments.status, "active")));
+    await db.insert(auditLog).values({
+      category: "job",
+      actorType: "worker",
+      action: "send",
+      detail: {
+        line: formatSendLog("failed", {
+          reason: "outcome_unknown",
+          mailbox: row.mailboxId,
+          enrollment: row.enrollmentId,
+        }),
+      },
+    });
+  }
+}
+
+function stringFields(value: unknown): Record<string, string | null | undefined> {
+  if (!value || typeof value !== "object") return {};
+  const out: Record<string, string | null | undefined> = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (typeof item === "string" || item === null) out[key] = item;
+    else if (typeof item === "number" || typeof item === "boolean") out[key] = String(item);
+  }
+  return out;
 }
 
 function stripTags(html: string): string {

@@ -13,11 +13,12 @@ export {
 } from "./constants.js";
 export { advanceEnrollment } from "./advance.js";
 export { clampDailyCap, countSentOnLocalDay, rampCapForDay, underDailyCap } from "./caps.js";
-export { effectsForDelivery, type CycleEffect, type SmtpTransport, type StoredMessage } from "./effects.js";
+export { effectsForDelivery, effectsForTemplateMiss, type CycleEffect, type SmtpTransport, type StoredMessage } from "./effects.js";
 export { evaluateCandidate, skipDecision } from "./evaluate.js";
 export { enforcedGapMinutes, gapElapsed, latestSentAt, pickGapMinutes } from "./gap.js";
 export { formatSendLog, type SendLogFields } from "./log.js";
 export { planSendTick } from "./plan.js";
+export { SEND_CLAIM_MS, inFlightDisposition, type InFlightDisposition } from "./pending.js";
 export { candidate, mailbox, NOON } from "./fixture.js";
 export { applyRecipientEvent, classifyInbound, isAutoReply } from "./recipient-events.js";
 export { classifyDeliveryFailure, decideAfterFailure, failureReason, retryAt, type SendFailure } from "./retry.js";

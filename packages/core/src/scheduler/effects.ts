@@ -48,6 +48,7 @@ export type MailboxUpdate = {
   appendSentAt?: Date;
   nextGapMinutes?: number;
   consecutiveAuthFailures?: number;
+  consecutivePolicyFailures?: number;
   paused?: boolean;
   pausedReason?: string | null;
 };
@@ -132,6 +133,7 @@ export function effectsForDelivery(input: {
         appendSentAt: input.now,
         nextGapMinutes,
         consecutiveAuthFailures: 0,
+        consecutivePolicyFailures: 0,
       },
     },
   ];
@@ -178,6 +180,57 @@ export function effectsForDelivery(input: {
   return effects;
 }
 
+export function effectsForTemplateMiss(input: {
+  decision: SendDecision;
+  fields: readonly string[];
+}): CycleEffect[] {
+  const reason = `missing_variable:${input.fields.join(",")}`;
+  return [
+    {
+      type: "log",
+      line: formatSendLog("failed", {
+        reason,
+        mailbox: input.decision.mailboxId,
+        enrollment: input.decision.enrollmentId,
+        contact: input.decision.contactId,
+        campaign: input.decision.campaignId,
+        step: input.decision.stepNumber,
+      }),
+    },
+    {
+      type: "message",
+      message: {
+        mailboxId: input.decision.mailboxId,
+        enrollmentId: input.decision.enrollmentId,
+        contactId: input.decision.contactId,
+        campaignId: input.decision.campaignId,
+        stepId: input.decision.stepId,
+        stepNumber: input.decision.stepNumber,
+        messageId: "",
+        subject: "",
+        inReplyTo: null,
+        references: null,
+        status: "failed",
+        error: reason,
+        attempt: input.decision.candidate.attempts,
+        retryAt: null,
+        sentAt: null,
+        bodyText: "",
+        bodyHtml: null,
+      },
+    },
+    {
+      type: "enrollment",
+      enrollmentId: input.decision.enrollmentId,
+      update: {
+        status: "stopped",
+        stopReason: "missing_variable",
+        mailboxId: input.decision.mailboxId,
+      },
+    },
+  ];
+}
+
 function failureEffects(input: {
   now: Date;
   decision: SendDecision;
@@ -188,6 +241,7 @@ function failureEffects(input: {
   const decision = decideAfterFailure({
     attemptsSoFar: input.decision.candidate.attempts,
     consecutiveAuthFailures: input.mailbox.consecutiveAuthFailures,
+    consecutivePolicyFailures: input.mailbox.consecutivePolicyFailures,
     failure: input.failure,
   });
   const baseMessage = {
@@ -265,6 +319,47 @@ function failureEffects(input: {
           pausedReason: decision.reason,
           consecutiveAuthFailures: decision.consecutiveAuthFailures,
         },
+      },
+    ];
+  }
+
+  if (decision.kind === "policy_block") {
+    return [
+      {
+        type: "log",
+        line: formatSendLog("failed", {
+          reason: "policy_block",
+          mailbox: input.decision.mailboxId,
+          enrollment: input.decision.enrollmentId,
+          contact: input.decision.contactId,
+        }),
+      },
+      {
+        type: "message",
+        message: {
+          ...baseMessage,
+          status: "failed",
+          error: decision.reason,
+          attempt: decision.attempts,
+          retryAt: null,
+          sentAt: null,
+        },
+      },
+      {
+        type: "enrollment",
+        enrollmentId: input.decision.enrollmentId,
+        update: {
+          status: "stopped",
+          stopReason: "policy_block",
+          mailboxId: input.decision.mailboxId,
+          attempts: decision.attempts,
+          retryAt: null,
+        },
+      },
+      {
+        type: "mailbox",
+        mailboxId: input.decision.mailboxId,
+        update: { consecutivePolicyFailures: decision.consecutivePolicyFailures },
       },
     ];
   }

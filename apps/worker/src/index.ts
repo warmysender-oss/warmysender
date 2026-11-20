@@ -36,7 +36,17 @@ async function main(): Promise<void> {
   await boss.schedule(INBOX_POLL_JOB, "*/5 * * * *");
   await boss.send(INBOX_POLL_JOB, {});
   await boss.createQueue(SEND_TICK_QUEUE);
-  const transport = createSmtpTransport(db, config.encryptionKey);
+  const transport = createSmtpTransport({
+    db,
+    encryptionKey: config.encryptionKey,
+    microsoft: {
+      clientId: config.msClientId ?? undefined,
+      clientSecret: config.msClientSecret ?? undefined,
+      tenant: config.msTenant,
+      publicUrl: config.publicUrl,
+      sessionSecret: config.sessionSecret,
+    },
+  });
   await boss.work(SEND_TICK_QUEUE, async () => {
     await executeSendTick({
       db,

@@ -15,15 +15,16 @@ export type SendFailure = {
   authFailed?: boolean;
 };
 
-export type FailureClass = "transient" | "recipient_bounce" | "auth_failure" | "permanent";
+export type FailureClass = "transient" | "recipient_bounce" | "policy_block" | "auth_failure" | "permanent";
 
 const AUTH_RESPONSE_CODES = new Set([334, 432, 454, 530, 534, 535, 538]);
 
 /**
- * Spec §3.5: 4xx and timeouts retry; 5xx recipient failures bounce the contact.
+ * Spec §3.5: 4xx and timeouts retry. Recipient 5xx bounce the contact.
+ * 5.1.x, 5.2.1, and 5.5.x are recipient errors. 5.7.x is a policy or reputation
+ * block: the message fails and the mailbox health counter moves, the contact stays.
+ * A 5xx without one of those enhanced codes is treated as a policy block, not a bounce.
  * Authentication failures are not recipient bounces and are not retried in a loop.
- * SMTP 5xx other than the auth codes above are treated as recipient bounces
- * ("5xx → bounced"), including policy codes such as 5.7.1.
  */
 export function classifyDeliveryFailure(failure: SendFailure): FailureClass {
   const code = failure.responseCode ?? null;
@@ -44,15 +45,21 @@ export function classifyDeliveryFailure(failure: SendFailure): FailureClass {
   if (is4xx) return "transient";
   if (failure.timedOut && (code === null || code < 500)) return "transient";
 
+  if (isRecipientBounce(enhanced)) return "recipient_bounce";
+
   const is5xx =
     enhanced.startsWith("5.") || (code !== null && code >= 500 && code <= 599);
-  if (is5xx) return "recipient_bounce";
+  if (is5xx) return "policy_block";
 
   if (failure.timedOut) return "transient";
   if (/timeout|timed out|econnreset|econnrefused|etimedout|socket hang up|eai_again/.test(message)) {
     return "transient";
   }
   return "permanent";
+}
+
+function isRecipientBounce(enhanced: string): boolean {
+  return /^5\.1\.\d+$/.test(enhanced) || enhanced === "5.2.1" || /^5\.5\.\d+$/.test(enhanced);
 }
 
 export type FailureDecision =
@@ -76,6 +83,13 @@ export type FailureDecision =
       consecutiveAuthFailures: number;
     }
   | {
+      kind: "policy_block";
+      reason: string;
+      attempts: number;
+      consecutiveAuthFailures: number;
+      consecutivePolicyFailures: number;
+    }
+  | {
       kind: "pause_mailbox";
       reason: string;
       attempts: number;
@@ -86,6 +100,7 @@ export function decideAfterFailure(input: {
   /** Transient attempts already used before this try. */
   attemptsSoFar: number;
   consecutiveAuthFailures: number;
+  consecutivePolicyFailures?: number;
   failure: SendFailure;
 }): FailureDecision {
   const klass = classifyDeliveryFailure(input.failure);
@@ -94,6 +109,15 @@ export function decideAfterFailure(input: {
       kind: "bounce",
       attempts: input.attemptsSoFar + 1,
       consecutiveAuthFailures: 0,
+    };
+  }
+  if (klass === "policy_block") {
+    return {
+      kind: "policy_block",
+      reason: failureReason("policy_block", input.failure),
+      attempts: input.attemptsSoFar + 1,
+      consecutiveAuthFailures: input.consecutiveAuthFailures,
+      consecutivePolicyFailures: (input.consecutivePolicyFailures ?? 0) + 1,
     };
   }
   if (klass === "auth_failure") {

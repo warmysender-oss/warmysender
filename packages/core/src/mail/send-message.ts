@@ -1,4 +1,6 @@
-import { applyUnsubscribeLink, unsubscribeHeaders, unsubscribeUrl } from "./send-headers.js";
+import { renderTemplate } from "../campaigns/template.js";
+import { appendSignature, missingRequiredVariables, templateContact } from "./render-body.js";
+import { unsubscribeHeaders, unsubscribeUrl } from "./send-headers.js";
 import {
   normalizeMessageId,
   resolveSubject,
@@ -34,6 +36,12 @@ export type SendContent = {
   publicUrl: string;
   unsubscribeToken: string;
   messageId: string;
+  signature?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  company?: string | null;
+  title?: string | null;
+  customFields?: Readonly<Record<string, string | null | undefined>> | null;
 };
 
 export function formatAddress(name: string | null, address: string): string {
@@ -52,14 +60,30 @@ export function createMessageId(fromAddress: string, unique: string): string {
 
 export function buildOutgoingEmail(
   input: SendContent,
-): { ok: true; email: OutgoingEmail } | { ok: false; reason: "missing_subject" | "missing_thread" | "invalid_unsubscribe_url" } {
-  const subject = resolveSubject(input);
-  if (!subject.ok) return subject;
+):
+  | { ok: true; email: OutgoingEmail }
+  | { ok: false; reason: "missing_subject" | "missing_thread" | "invalid_unsubscribe_url" | "missing_variable"; fields?: string[] } {
   const thread = threadingHeaders(input);
   if (!thread.ok) return thread;
   const headers = unsubscribeHeaders(input.publicUrl, input.unsubscribeToken);
   const url = unsubscribeUrl(input.publicUrl, input.unsubscribeToken);
   if (!headers || !url) return { ok: false, reason: "invalid_unsubscribe_url" };
+  const contact = templateContact({ ...input, unsubscribeLink: url });
+  const missing = [
+    ...missingRequiredVariables(input.stepSubject ?? "", contact),
+    ...missingRequiredVariables(input.bodyText, contact),
+    ...missingRequiredVariables(input.bodyHtml ?? "", contact),
+  ];
+  const fields = [...new Set(missing)];
+  if (fields.length > 0) return { ok: false, reason: "missing_variable", fields };
+  const renderedSubject = input.stepSubject ? renderTemplate(input.stepSubject, contact) : input.stepSubject;
+  const renderedText = renderTemplate(input.bodyText, contact);
+  const renderedHtml = input.bodyHtml ? renderTemplate(input.bodyHtml, contact, { escapeValues: true }) : null;
+  const signature = input.signature ?? "";
+  const text = appendSignature(renderedText, signature, false);
+  const html = renderedHtml ? appendSignature(renderedHtml, signature, true) : null;
+  const subject = resolveSubject({ ...input, stepSubject: renderedSubject });
+  if (!subject.ok) return subject;
   return {
     ok: true,
     email: {
@@ -67,8 +91,8 @@ export function buildOutgoingEmail(
       to: formatAddress(input.toName, input.toAddress),
       subject: subject.subject,
       messageId: normalizeMessageId(input.messageId),
-      text: applyUnsubscribeLink(input.bodyText, url),
-      html: input.bodyHtml ? applyUnsubscribeLink(input.bodyHtml, url) : null,
+      text,
+      html,
       inReplyTo: thread.inReplyTo ?? null,
       references: thread.references ?? null,
       listUnsubscribe: headers.listUnsubscribe,

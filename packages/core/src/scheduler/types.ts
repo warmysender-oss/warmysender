@@ -60,6 +60,10 @@ export type MailboxSnapshot = {
   rampStartedOn: string;
   paused: boolean;
   consecutiveAuthFailures: number;
+  /** SMTP policy blocks (5.7.x). Reset on a successful send. */
+  consecutivePolicyFailures: number;
+  /** Appended to the body when it is not empty. */
+  signature: string;
   /** Successful send instants. The daily cap counts those on today's local date. */
   sentAtTimes: readonly Date[];
   /**
@@ -87,6 +91,11 @@ export type SendCandidate = {
   contactId: string;
   contactEmail: string;
   contactStatus: ContactStatus;
+  firstName: string;
+  lastName: string;
+  company: string;
+  title: string;
+  customFields: Readonly<Record<string, string | null | undefined>>;
   /** Null until step 1 is assigned. Follow-ups keep the step 1 mailbox. */
   mailboxId: string | null;
   /** Campaign mailboxes step 1 may rotate across. Ignored once mailboxId is set. */

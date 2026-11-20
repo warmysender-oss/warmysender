@@ -9,8 +9,12 @@ describe("retries, backoff, and 5xx bounces", () => {
     expect(classifyDeliveryFailure({ timedOut: true })).toBe("transient");
     expect(classifyDeliveryFailure({ message: "ETIMEDOUT" })).toBe("transient");
     expect(classifyDeliveryFailure({ responseCode: 550, enhancedCode: "5.1.1" })).toBe("recipient_bounce");
-    expect(classifyDeliveryFailure({ responseCode: 552 })).toBe("recipient_bounce");
-    expect(classifyDeliveryFailure({ responseCode: 554, enhancedCode: "5.7.1" })).toBe("recipient_bounce");
+    expect(classifyDeliveryFailure({ responseCode: 550, enhancedCode: "5.1.10" })).toBe("recipient_bounce");
+    expect(classifyDeliveryFailure({ responseCode: 550, enhancedCode: "5.2.1" })).toBe("recipient_bounce");
+    expect(classifyDeliveryFailure({ responseCode: 550, enhancedCode: "5.5.0" })).toBe("recipient_bounce");
+    expect(classifyDeliveryFailure({ responseCode: 552, enhancedCode: "5.2.2" })).toBe("policy_block");
+    expect(classifyDeliveryFailure({ responseCode: 554, enhancedCode: "5.7.1" })).toBe("policy_block");
+    expect(classifyDeliveryFailure({ responseCode: 550 })).toBe("policy_block");
     expect(classifyDeliveryFailure({ responseCode: 535, message: "Authentication failed" })).toBe("auth_failure");
     expect(classifyDeliveryFailure({ authFailed: true, responseCode: 550 })).toBe("auth_failure");
     expect(classifyDeliveryFailure({ message: "invalid envelope" })).toBe("permanent");
@@ -38,6 +42,22 @@ describe("retries, backoff, and 5xx bounces", () => {
     });
     expect(decision.kind).toBe("bounce");
     expect(decision.consecutiveAuthFailures).toBe(0);
+  });
+
+  it("fails a 5.7 policy block without bouncing, and counts it on the mailbox", () => {
+    const decision = decideAfterFailure({
+      attemptsSoFar: 0,
+      consecutiveAuthFailures: 1,
+      consecutivePolicyFailures: 2,
+      failure: { responseCode: 554, enhancedCode: "5.7.1", message: "blocked" },
+    });
+    expect(decision.kind).toBe("policy_block");
+    if (decision.kind === "policy_block") {
+      expect(decision.reason).toContain("policy_block");
+      expect(decision.reason).toContain("5.7.1");
+      expect(decision.consecutivePolicyFailures).toBe(3);
+      expect(decision.consecutiveAuthFailures).toBe(1);
+    }
   });
 
   it("pauses the mailbox on the third auth failure and does not retry the first two in a tight loop", () => {

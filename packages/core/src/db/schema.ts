@@ -154,6 +154,13 @@ export const mailboxes = pgTable(
     health: text("health").notNull().default("unknown"),
     pausedReason: text("paused_reason"),
     consecutiveAuthFailures: integer("consecutive_auth_failures").notNull().default(0),
+    /** SMTP 5.7.x policy blocks. A success resets this. It does not bounce the contact. */
+    consecutivePolicyFailures: integer("consecutive_policy_failures").notNull().default(0),
+    /**
+     * Set while a worker owns this mailbox for a tick.
+     * Another worker skips the row until this time. A crash releases it when the time passes.
+     */
+    sendClaimUntil: timestamp("send_claim_until", { withTimezone: true }),
     lastSendAt: timestamp("last_send_at", { withTimezone: true }),
     /** Minutes chosen after the last successful send. Null until the mailbox has sent. */
     nextGapMinutes: integer("next_gap_minutes"),
@@ -175,6 +182,7 @@ export const mailboxes = pgTable(
       sql`${t.nextGapMinutes} is null or (${t.nextGapMinutes} >= 1 and ${t.nextGapMinutes} <= 1440)`,
     ),
     check("mailboxes_health_chk", sql`${t.health} in ('unknown', 'healthy', 'paused')`),
+    check("mailboxes_policy_failures_chk", sql`${t.consecutivePolicyFailures} >= 0`),
     check("mailboxes_smtp_security_chk", sql`${t.smtpSecurity} in ('starttls', 'ssl', 'none')`),
     check("mailboxes_imap_security_chk", sql`${t.imapSecurity} in ('starttls', 'ssl', 'none')`),
   ],
@@ -388,11 +396,15 @@ export const messages = pgTable(
     error: text("error"),
     attemptCount: integer("attempt_count").notNull().default(0),
     nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }),
+    /** Set when SMTP starts. A pending row with this set and no next_attempt_at is in flight. */
+    sendStartedAt: timestamp("send_started_at", { withTimezone: true }),
     sentAt: timestamp("sent_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("messages_message_id_unique").on(t.messageId),
+    /** One row per step so a restart updates the in-flight send instead of inserting another. */
+    uniqueIndex("messages_enrollment_step_unique").on(t.enrollmentId, t.stepId),
     index("messages_enrollment_idx").on(t.enrollmentId),
     index("messages_contact_idx").on(t.contactId),
     /** Daily cap and gap: sent rows for a mailbox, newest first in the planner. */
