@@ -1,0 +1,3 @@
+# Task 07 — REST API, MCP, skills, WarmySender connect, demo (after 06 is merged)
+Lane: `apps/server/src/api/**`, `apps/server/src/mcp/**`, `skills/**`, `server.json`, `.claude-plugin/**`, `.cursor-plugin/**`, `apps/server/src/warmysender/**`, `apps/web/src/pages/settings/**`, seed script.
+Build spec §3.8 and §3.9 and the §7 agent items: REST + OpenAPI, MCP tools (never send directly, never raise limits), `draft_reply`, four skills, MCP registry `server.json`, plugin manifests, `npx skills add warmysender-oss/warmysender`, WarmySender connect (verify / warm up / leads link, mocked in tests, read shapes from the live OpenAPI), seeded `.test` demo data, demo GIF into README. Run spec §6 acceptance checks end to end and report each.

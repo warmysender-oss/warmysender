@@ -1,0 +1,3 @@
+# Task 03 — Contacts, lists, suppression, campaign builder (after 01 is merged)
+Lane: `apps/server/src/contacts/**`, `apps/server/src/campaigns/**`, `apps/web/src/pages/contacts/**`, `apps/web/src/pages/campaigns/**`, `packages/core/src/campaigns/**` (templating, launch check).
+Build spec §3.3 and §3.4 except the sending itself: CSV import with mapping + dedupe + report, lists, statuses, global suppression (email + domain), campaign CRUD, steps with delays, variables with fallback, preview with a real contact, mailbox selection, launch check in words, states draft/running/paused/completed (start/pause only flip state + create enrollments; task 05 sends). Tests for CSV parsing, dedupe, templating + fallback, launch check.

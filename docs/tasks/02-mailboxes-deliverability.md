@@ -1,0 +1,3 @@
+# Task 02 — Mailboxes + deliverability check + doctor (after 01 is merged)
+Lane: `apps/server/src/mailboxes/**`, `apps/web/src/pages/mailboxes/**`, `packages/core/src/mail/**`, `packages/core/src/dns/**`, `apps/server/src/oauth/**`, `scripts/doctor*`, `docs/MICROSOFT-APP.md`.
+Build spec §3.2 (SMTP/IMAP presets + test connection, Microsoft sign-in with the self-hoster's own Entra app via XOAUTH2, caps, window, gaps, ramp, pause after 3 auth failures) and from §7: the DNS deliverability check (SPF, DKIM common selectors, DMARC, MX; plain-language fixes) and the `doctor` command. Tests for ramp math, cap validation, DNS result parsing (mock DNS).
