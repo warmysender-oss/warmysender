@@ -56,7 +56,7 @@ describe("campaign service", () => {
     ]);
     await app.contacts.insertList({ id: "list_1", name: "Clinics" });
     await app.contacts.insertMemberships([{ listId: "list_1", contactId: "con_2" }]);
-    await app.contacts.insertSuppression({ id: "sup_1", kind: "domain", value: "blocked.test" });
+    await app.contacts.insertSuppression({ id: "sup_1", kind: "domain", value: "blocked.test", reason: "" });
 
     const campaign = await createCampaign(app, "Harbor intro");
     const bare = await addStep(app, campaign.id, {});

@@ -4,6 +4,7 @@ import type { ContactStatus, SuppressionKind, SuppressionRecord } from "./types.
 export type SuppressionEntry = {
   kind: SuppressionKind;
   value: string;
+  reason?: string;
 };
 
 export function normalizeSuppression(
@@ -41,7 +42,7 @@ export function suppressionForStatus(status: ContactStatus, email: string): Supp
   if (status !== "bounced" && status !== "unsubscribed") return null;
   const normalized = normalizeEmail(email);
   if (!normalized) return null;
-  return { kind: "email", value: normalized };
+  return { kind: "email", value: normalized, reason: status };
 }
 
 export function sameSuppression(

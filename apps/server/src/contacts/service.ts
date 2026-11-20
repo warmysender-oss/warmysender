@@ -24,7 +24,8 @@ export type ContactClock = {
   id: () => string;
 };
 
-const MAX_CSV_CHARS = 5_000_000;
+/** Stays under the Express JSON body limit of 1 MB, including JSON encoding overhead. */
+const MAX_CSV_CHARS = 700_000;
 const MAX_DATA_ROWS = 100_000;
 
 export type CsvPreview = {
@@ -106,7 +107,12 @@ export async function setContactStatus(
   if (entry) {
     const suppressions = await store.listSuppressions();
     if (!suppressions.some((row) => sameSuppression(row, entry))) {
-      await store.insertSuppression({ id: clock.id(), kind: entry.kind, value: entry.value });
+      await store.insertSuppression({
+        id: clock.id(),
+        kind: entry.kind,
+        value: entry.value,
+        reason: entry.reason ?? "",
+      });
     }
   }
   return next;
@@ -175,7 +181,7 @@ export async function addSuppression(
   const existing = await store.listSuppressions();
   const found = existing.find((row) => sameSuppression(row, { kind, value: normalized.value }));
   if (found) return found;
-  const created = { id: clock.id(), kind, value: normalized.value };
+  const created = { id: clock.id(), kind, value: normalized.value, reason: "" };
   await store.insertSuppression(created);
   return created;
 }
@@ -190,7 +196,9 @@ function readTable(csv: string): string[][] {
   if (typeof csv !== "string" || csv.trim().length === 0) {
     throw new UserInputError("That CSV is empty.");
   }
-  if (csv.length > MAX_CSV_CHARS) throw new UserInputError("CSV is larger than 5 MB.");
+  if (csv.length > MAX_CSV_CHARS) {
+    throw new UserInputError("CSV is larger than 700 KB, which does not fit in the 1 MB request limit.");
+  }
   try {
     return parseCsv(csv);
   } catch (error) {

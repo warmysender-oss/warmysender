@@ -29,10 +29,12 @@ describe("suppression", () => {
     expect(suppressionForStatus("bounced", "Jane@Harbor-Dental.test")).toEqual({
       kind: "email",
       value: "jane@harbor-dental.test",
+      reason: "bounced",
     });
     expect(suppressionForStatus("unsubscribed", "jane@harbor-dental.test")).toEqual({
       kind: "email",
       value: "jane@harbor-dental.test",
+      reason: "unsubscribed",
     });
     expect(suppressionForStatus("active", "jane@harbor-dental.test")).toBeNull();
     expect(suppressionForStatus("replied", "jane@harbor-dental.test")).toBeNull();

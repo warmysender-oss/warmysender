@@ -20,7 +20,7 @@ describe("contact service", () => {
     const store = createMemoryContactStore();
     const ids = clock();
     await store.insertList({ id: "list_1", name: "Clinics" });
-    await store.insertSuppression({ id: "sup_1", kind: "domain", value: "blocked.test" });
+    await store.insertSuppression({ id: "sup_1", kind: "domain", value: "blocked.test", reason: "" });
 
     const report = await importCsv(store, ids, {
       csv,
@@ -45,8 +45,8 @@ describe("contact service", () => {
     const bounced = await setContactStatus(store, ids, contacts[0]?.id ?? "", "bounced");
     expect(bounced.status).toBe("bounced");
     expect(await store.listSuppressions()).toEqual([
-      { id: "sup_1", kind: "domain", value: "blocked.test" },
-      { id: "id_2", kind: "email", value: "jane@harbor-dental.test" },
+      { id: "sup_1", kind: "domain", value: "blocked.test", reason: "" },
+      { id: "id_2", kind: "email", value: "jane@harbor-dental.test", reason: "bounced" },
     ]);
 
     await setContactLists(store, bounced.id, []);

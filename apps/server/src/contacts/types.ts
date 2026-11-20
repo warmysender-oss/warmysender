@@ -45,6 +45,8 @@ export type SuppressionRecord = {
   id: string;
   kind: SuppressionKind;
   value: string;
+  /** Why the row exists. Empty when someone added it by hand. */
+  reason: string;
 };
 
 export type ContactStore = {
