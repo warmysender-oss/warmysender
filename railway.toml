@@ -1,7 +1,7 @@
 # One Railway service: build the repository Dockerfile and start its CMD.
-# deploy.healthcheckPath is unset. The build spec requires a health endpoint
-# and leaves the path unnamed.
-# deploy.startCommand is unset so the image CMD is the process that starts.
+# deploy.healthcheckPath is /health (GET /health -> 200 { ok: true }).
+# deploy.startCommand is unset so the image CMD starts the app
+# (node apps/server/dist/index.js). The worker is a second service.
 # Railway's config-as-code docs mark this file format deprecated for new
 # services (existing files keep working until 2026-12-01). The build spec
 # still asks for railway.toml. See docs/self-hosting/railway.md.
@@ -11,5 +11,8 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
+# GET /health returns 200 { ok: true } (apps/server/src/app.ts).
+healthcheckPath = "/health"
+healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10

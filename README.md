@@ -36,7 +36,7 @@ Seeded demo data uses `.test` domains only.
 - Stats per campaign, step, and mailbox.
 - REST API (`/api/v1`) and MCP (`/mcp`) for Claude, ChatGPT, Cursor, Codex, OpenClaw, Hermes Agent, and any other MCP client.
 - Optional WarmySender connect for list verification, mailbox warmup, and a leads-search link. The core app runs with no WarmySender key.
-- A DNS deliverability check (SPF, DKIM, DMARC, MX) on each mailbox, and `pnpm doctor` / `docker compose run app doctor`.
+- A DNS deliverability check (SPF, DKIM, DMARC, MX) on each mailbox, and `pnpm doctor` / `docker compose run app doctor` (the mailbox milestone adds the `doctor` command).
 
 ## Works with your AI agent
 
@@ -59,10 +59,9 @@ Set up open-source WarmySender from https://github.com/warmysender-oss/warmysend
 
 1. Clone the repository if it is not already here.
 2. Copy .env.example to .env and fill every variable that file documents. Do not commit .env. Demo and test addresses use .test domains only.
-3. Start the stack with `docker compose up`. That pulls ghcr.io/warmysender-oss/warmysender.
+3. Start the stack with `docker compose up`.
 4. Open http://localhost:3000. The first account becomes the admin.
-5. Run `docker compose run app doctor` and apply each fix it prints.
-6. Leave the sending caps, window, gap, and ramp as they are. Agents create and start campaigns. The scheduler sends. An agent cannot raise a limit, and a reply draft stays a draft until a person sends it from the inbox.
+5. Leave the sending caps, window, gap, and ramp as they are. Agents create and start campaigns. The scheduler sends. An agent cannot raise a limit, and a reply draft stays a draft until a person sends it from the inbox.
 ```
 
 ### Or do it yourself
@@ -74,26 +73,17 @@ Set up open-source WarmySender from https://github.com/warmysender-oss/warmysend
    cd warmysender
    ```
 
-2. Create `.env` from the example and fill in the values it documents (`DATABASE_URL`, `ENCRYPTION_KEY`, `SESSION_SECRET`, `PUBLIC_URL`, and the optional `MS_CLIENT_ID` / `MS_CLIENT_SECRET` / `MS_TENANT`).
-
-   ```bash
-   cp .env.example .env
-   ```
-
-3. Start the stack. Compose pulls `ghcr.io/warmysender-oss/warmysender`.
+2. Start the stack. On a laptop, Compose supplies development defaults, so a `.env` file is optional. `NODE_ENV=production` refuses those defaults.
 
    ```bash
    docker compose up
    ```
 
-4. Open http://localhost:3000 and create the first account. That account is the admin.
-5. Check the install.
+3. Open http://localhost:3000 and create the first account. That account is the admin.
 
-   ```bash
-   docker compose run app doctor
-   ```
+Before you expose the server, copy `.env.example` to `.env` and set `ENCRYPTION_KEY` and `SESSION_SECRET` the way that file describes (`openssl rand -base64 32`). Details, including Coolify, Dokploy, Portainer, and Railway, are in [docs/self-hosting/README.md](docs/self-hosting/README.md).
 
-The same checks from a source checkout are `pnpm doctor`. Details, including Coolify, Dokploy, Portainer, and Railway, are in [docs/self-hosting/README.md](docs/self-hosting/README.md).
+Release tags publish `ghcr.io/warmysender-oss/warmysender`. The Compose file in the repo builds the local `Dockerfile` (`build: .`).
 
 ## Safe by default
 

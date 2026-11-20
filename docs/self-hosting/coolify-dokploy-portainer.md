@@ -1,6 +1,6 @@
 # Coolify, Dokploy, and Portainer
 
-These panels run the repository Compose file unchanged. The `app` and `worker` services use `ghcr.io/warmysender-oss/warmysender`. Leave that image in place so the panel pulls the published image.
+These panels run the repository Compose file unchanged. `app` and `worker` are `build: .`, so the panel builds the repository `Dockerfile`. Release tags also publish `ghcr.io/warmysender-oss/warmysender`. The build spec asks for Compose to pull that image. The Compose file builds locally. Leave the file unchanged.
 
 ## Deploy
 
