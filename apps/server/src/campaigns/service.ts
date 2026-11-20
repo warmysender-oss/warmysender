@@ -14,7 +14,7 @@ import {
   type LaunchContact,
   type LaunchIssue,
   type StepPreview,
-} from "../../../../packages/core/src/campaigns/index.js";
+} from "@warmysender/core";
 import { contactIdsInLists } from "../contacts/lists.js";
 import { isSuppressed } from "../contacts/suppression.js";
 import type { ContactRecord, ContactStore } from "../contacts/types.js";
@@ -46,13 +46,18 @@ export async function listCampaignDetails(deps: CampaignDeps): Promise<CampaignD
   return details;
 }
 
-export async function createCampaign(deps: CampaignDeps, name: string): Promise<CampaignDetail> {
+export async function createCampaign(
+  deps: CampaignDeps,
+  name: string,
+  createdBy: string | null = null,
+): Promise<CampaignDetail> {
   const cleaned = cleanCampaignName(name);
   if (!cleaned.ok) throw new UserInputError(cleaned.error);
   const campaign: CampaignRecord = {
     id: deps.id(),
     name: cleaned.name,
     state: "draft",
+    createdBy,
     mailboxIds: [],
     contactIds: [],
     listIds: [],

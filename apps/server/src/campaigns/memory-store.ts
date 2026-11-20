@@ -76,5 +76,6 @@ function cloneCampaign(row: CampaignRecord): CampaignRecord {
     mailboxIds: [...row.mailboxIds],
     contactIds: [...row.contactIds],
     listIds: [...row.listIds],
+    createdBy: row.createdBy,
   };
 }

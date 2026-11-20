@@ -1,9 +1,10 @@
-import type { CampaignState, StepContentType } from "../../../../packages/core/src/campaigns/index.js";
+import type { CampaignState, StepContentType } from "@warmysender/core";
 
 export type CampaignRecord = {
   id: string;
   name: string;
   state: CampaignState;
+  createdBy: string | null;
   mailboxIds: string[];
   contactIds: string[];
   listIds: string[];
@@ -23,10 +24,10 @@ export type EnrollmentRecord = {
   id: string;
   campaignId: string;
   contactId: string;
-  status: "active";
-  currentStep: 1;
-  nextSendAt: string;
-  mailboxId: null;
+  status: "active" | "completed" | "stopped";
+  currentStep: number;
+  nextSendAt: string | null;
+  mailboxId: string | null;
 };
 
 export type MailboxRef = {

@@ -37,6 +37,15 @@ describe("launchCheck", () => {
     );
   });
 
+  it("allows a follow-up with a blank subject so it can stay in the same thread", () => {
+    const issues = launchCheck({
+      ...ready,
+      steps: [step(), step({ position: 2, delayDays: 2, subject: "   " })],
+    });
+    expect(issues.map((issue) => issue.message)).not.toContain("Step 2 needs a subject.");
+    expect(blockingIssues(issues)).toEqual([]);
+  });
+
   it("refuses an empty subject or body", () => {
     const issues = launchCheck({
       ...ready,

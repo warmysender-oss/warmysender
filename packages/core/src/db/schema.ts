@@ -276,6 +276,35 @@ export const campaignSteps = pgTable(
   ],
 );
 
+/** Draft audience. Enrollments are created from these rows when the campaign starts. */
+export const campaignAudienceContacts = pgTable(
+  "campaign_audience_contacts",
+  {
+    campaignId: uuid("campaign_id")
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    contactId: uuid("contact_id")
+      .notNull()
+      .references(() => contacts.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.campaignId, t.contactId] })],
+);
+
+export const campaignAudienceLists = pgTable(
+  "campaign_audience_lists",
+  {
+    campaignId: uuid("campaign_id")
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    listId: uuid("list_id")
+      .notNull()
+      .references(() => lists.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.campaignId, t.listId] })],
+);
+
 export const campaignMailboxes = pgTable(
   "campaign_mailboxes",
   {
@@ -487,6 +516,8 @@ export const databaseSchema = {
   campaigns,
   campaignSteps,
   campaignMailboxes,
+  campaignAudienceContacts,
+  campaignAudienceLists,
   enrollments,
   messages,
   inboundMessages,

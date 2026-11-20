@@ -4,6 +4,8 @@ import express, { type ErrorRequestHandler, type Express } from "express";
 import type { Config, AppDatabase } from "@warmysender/core";
 import { HttpError } from "./http.js";
 import { attachUser } from "./middleware.js";
+import { campaignsRouter } from "./campaigns/routes.js";
+import { contactsRouter } from "./contacts/routes.js";
 import { inboxRouter } from "./inbox/routes.js";
 import { mailRouter, type MailRouterOptions } from "./mailboxes/router.js";
 import { apiKeysRouter } from "./routes/api-keys.js";
@@ -47,6 +49,8 @@ export function createApp(options: CreateAppOptions): Express {
   app.use("/api/inbox", inboxRouter(db, config, options.replyTransport));
   app.use("/api/stats", statsRouter(db));
   app.use("/api/setup", setupRouter(db));
+  app.use("/api/contacts", contactsRouter(db));
+  app.use("/api/campaigns", campaignsRouter(db, config.publicUrl));
   app.use(mailRouter(db, config, options.mail));
 
   if (options.serveWeb && existsSync(options.webDist)) {

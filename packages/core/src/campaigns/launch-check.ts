@@ -123,7 +123,9 @@ function stepIssues(steps: LaunchStep[]): LaunchIssue[] {
   }
   for (const step of ordered) {
     const label = `Step ${step.position}`;
-    if (step.subject.trim().length === 0) {
+    // A blank subject after step 1 is allowed. The schema stores that as null so
+    // the sender can keep the previous subject and prefix "Re:".
+    if (step.position === 1 && step.subject.trim().length === 0) {
       issues.push({
         code: "empty_step",
         stepPosition: step.position,
