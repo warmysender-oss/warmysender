@@ -4,6 +4,11 @@ import { createApp } from "./app.js";
 import { defaultWebDist } from "./paths.js";
 
 async function main(): Promise<void> {
+  if (process.argv[2] === "doctor") {
+    const { runWiredDoctor } = await import("./mailboxes/doctor-run.js");
+    const code = await runWiredDoctor();
+    process.exit(code);
+  }
   const config = loadConfig();
   if (config.usingDevSecrets) {
     console.warn(

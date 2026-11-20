@@ -26,7 +26,17 @@ export function evaluateSpf(txtRecords: readonly string[], domain: string, spfEx
       fix: "Delete the extra SPF TXT records and keep one. Combine every sender into that single record. More than one SPF record makes the check fail.",
     }
   }
-  const tokens = records[0].split(/\s+/)
+  const record = records[0]
+  if (!record) {
+    return {
+      id: "spf",
+      status: "fail",
+      code: "missing",
+      summary: `${domain} has no SPF record.`,
+      fix: "Add one TXT record that starts with v=spf1.",
+    }
+  }
+  const tokens = record.split(/\s+/)
   const all = tokens.find((token) => /^(?:\+|-|~|\?)?all$/i.test(token))
   const redirect = tokens.some((token) => /^redirect=/i.test(token))
   if (all && /^\+?all$/i.test(all)) {
@@ -86,7 +96,17 @@ export function evaluateDmarc(txtRecords: readonly string[], domain: string): De
       fix: "Keep a single TXT record on _dmarc. Delete the others.",
     }
   }
-  const policy = readTag(records[0], "p")
+  const record = records[0]
+  if (!record) {
+    return {
+      id: "dmarc",
+      status: "fail",
+      code: "missing",
+      summary: `${domain} has no DMARC record.`,
+      fix: `Add a TXT record at ${host} with: v=DMARC1; p=none; rua=mailto:dmarc@${domain}.`,
+    }
+  }
+  const policy = readTag(record, "p")
   if (!policy) {
     return {
       id: "dmarc",
@@ -139,7 +159,8 @@ export function evaluateMx(
   const exchanges = records
     .map((record) => ({ ...record, exchange: record.exchange.replace(/\.$/, "").toLowerCase() }))
     .sort((a, b) => a.priority - b.priority)
-  if (exchanges.length === 1 && (exchanges[0].exchange === "." || exchanges[0].exchange === "")) {
+  const only = exchanges[0]
+  if (exchanges.length === 1 && only && (only.exchange === "." || only.exchange === "")) {
     return {
       id: "mx",
       status: "fail",
@@ -217,12 +238,14 @@ export function launchWarningFor(domain: string, checks: readonly Deliverability
 
 function readTag(record: string, name: string): string | null {
   const match = new RegExp(`(?:^|;)\\s*${name}\\s*=\\s*([^;\\s]+)`, "i").exec(record)
-  return match ? match[1] : null
+  const value = match?.[1]
+  return value ?? null
 }
 
 function dkimKey(record: string): "ok" | "revoked" | "no" {
   const compact = record.replace(/\s+/g, "")
   const match = /(?:^|;)p=([^;]*)/i.exec(compact)
-  if (!match) return "no"
-  return match[1].length > 0 ? "ok" : "revoked"
+  const value = match?.[1]
+  if (value === undefined) return "no"
+  return value.length > 0 ? "ok" : "revoked"
 }

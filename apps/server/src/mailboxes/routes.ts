@@ -1,11 +1,13 @@
-import { checkDeliverability, type DnsResolver } from "../../../../packages/core/src/dns/index.js"
 import {
+  checkDeliverability,
   clearAuthPause,
   MICROSOFT_IMAP,
   MICROSOFT_SMTP,
+  listPresets,
   spfExampleForPreset,
+  type DnsResolver,
   type SecretCodec,
-} from "../../../../packages/core/src/mail/index.js"
+} from "@warmysender/core"
 import {
   createSmtpMailbox,
   listMailboxViews,
@@ -17,7 +19,6 @@ import {
 } from "./service.js"
 import type { MailboxProbes } from "./test-connection.js"
 import type { MailboxStore } from "./types.js"
-import { listPresets } from "../../../../packages/core/src/mail/presets.js"
 import {
   buildAuthorizeUrl,
   buildTokenRequest,
@@ -123,7 +124,7 @@ export async function handleMailHttp(request: RouteRequest, deps: MailHttpDeps):
   if (oneId && method === "GET") {
     return requireUser(request, async () => {
       const mailbox = await deps.store.findById(oneId)
-      if (!mailbox) return { status: 404, body: { errors: [{ field: "id", message: "Mailbox not found." }] } }
+      if (!mailbox) return { status: 404, body: { error: "Mailbox not found.", errors: [{ field: "id", message: "Mailbox not found." }] } }
       return { status: 200, body: { mailbox: toMailboxView(mailbox, deps.now()) } }
     })
   }
@@ -134,7 +135,7 @@ export async function handleMailHttp(request: RouteRequest, deps: MailHttpDeps):
       return { status: 200, body: { mailbox: updated.value } }
     })
   }
-  return { status: 404, body: { errors: [{ field: "path", message: "Not found." }] } }
+  return { status: 404, body: { error: "Not found.", errors: [{ field: "path", message: "Not found." }] } }
 }
 
 async function refreshStoredMicrosoftToken(
@@ -171,7 +172,7 @@ async function refreshStoredMicrosoftToken(
 
 async function mailboxDeliverability(id: string, deps: MailHttpDeps): Promise<RouteResponse> {
   const mailbox = await deps.store.findById(id)
-  if (!mailbox) return { status: 404, body: { errors: [{ field: "id", message: "Mailbox not found." }] } }
+  if (!mailbox) return { status: 404, body: { error: "Mailbox not found.", errors: [{ field: "id", message: "Mailbox not found." }] } }
   const report = await checkDeliverability(mailbox.email, deps.resolver, spfExampleForPreset(mailbox.provider))
   return { status: 200, body: { deliverability: report } }
 }
@@ -262,13 +263,20 @@ function redirectMailboxes(query: string): RouteResponse {
 }
 
 function requireUser(request: RouteRequest, run: () => RouteResponse | Promise<RouteResponse>): Promise<RouteResponse> | RouteResponse {
-  if (!request.userId) return { status: 401, body: { errors: [{ field: "session", message: "Sign in first." }] } }
+  if (!request.userId) return { status: 401, body: { error: "Sign in first.", errors: [{ field: "session", message: "Sign in first." }] } }
   return run()
 }
 
 function result(value: { ok: true; value: unknown } | { ok: false; status: number; errors: { field: string; message: string }[]; connection?: unknown }): RouteResponse {
   if (!value.ok) {
-    return { status: value.status, body: { errors: value.errors, connection: value.connection } }
+    return {
+      status: value.status,
+      body: {
+        error: value.errors.map((error) => error.message).join(" "),
+        errors: value.errors,
+        connection: value.connection,
+      },
+    }
   }
   return { status: 200, body: value.value }
 }

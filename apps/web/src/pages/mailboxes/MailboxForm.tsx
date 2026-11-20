@@ -110,7 +110,7 @@ export function MailboxForm({
           ))}
         </select>
       </label>
-      <p className="text-sm text-zinc-600 dark:text-zinc-300">{findPreset(values.presetId)?.help}</p>
+      <p className="text-sm text-muted-foreground">{findPreset(values.presetId)?.help}</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="From name" value={values.fromName} onChange={(fromName) => setValues({ ...values, fromName })} />
         <Field label="Email" value={values.email} onChange={(email) => setValues({ ...values, email, smtpUsername: email, imapUsername: email })} />
@@ -163,7 +163,7 @@ export function MailboxForm({
         <textarea className={fieldClass} rows={4} value={values.signature} onChange={(event) => setValues({ ...values, signature: event.target.value })} />
       </label>
       {error ? <p className="text-sm text-red-700 dark:text-red-300">{error}</p> : null}
-      <button type="submit" disabled={busy} className="rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-60">
+      <button type="submit" disabled={busy} className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60">
         {busy ? "Saving…" : submitLabel}
       </button>
     </form>
@@ -199,4 +199,4 @@ function timeZones(): string[] {
   return [DEFAULT_TIME_ZONE]
 }
 
-const fieldClass = "mt-1 w-full rounded-md border border-zinc-300 bg-white px-2 py-1 dark:border-zinc-700 dark:bg-zinc-950"
+const fieldClass = "mt-1 w-full rounded-md border bg-background px-2 py-1"

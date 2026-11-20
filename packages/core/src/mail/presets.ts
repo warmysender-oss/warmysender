@@ -1,4 +1,4 @@
-import type { MailPreset, MailPresetId, ServerEndpoint } from "./types.js"
+import type { MailPreset, ServerEndpoint } from "./types.js"
 
 /**
  * Hosts, ports, and SPF examples are the vendors' published settings:

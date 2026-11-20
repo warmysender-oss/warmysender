@@ -1,4 +1,4 @@
-import type { MailboxHealthState, SocketSecurity } from "../../../../packages/core/src/mail/index.js"
+import type { MailboxHealthState, SocketSecurity } from "@warmysender/core"
 
 export type ProbeInput = {
   host: string

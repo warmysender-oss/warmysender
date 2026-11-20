@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import { createSmtpMailbox, recordMailboxAuth } from "./service.js"
 import { handleMailHttp, type MailHttpDeps } from "./routes.js"
 import type { MailboxRecord, MailboxStore } from "./types.js"
-import type { DnsResolver } from "../../../../packages/core/src/dns/types.js"
+import type { DnsResolver } from "@warmysender/core"
 
 const codec = {
   encrypt: (plain: string) => `enc:${Buffer.from(plain, "utf8").toString("base64url")}`,

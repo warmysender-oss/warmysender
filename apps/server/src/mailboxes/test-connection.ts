@@ -1,5 +1,5 @@
 import type { ProbeInput } from "./types.js"
-import { plainConnectionError } from "../../../../packages/core/src/mail/errors.js"
+import { plainConnectionError } from "@warmysender/core"
 
 export type ConnectionSide = {
   ok: boolean

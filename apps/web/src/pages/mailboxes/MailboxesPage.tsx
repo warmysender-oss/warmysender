@@ -30,24 +30,24 @@ export function MailboxesPage({
   const [connection, setConnection] = useState<Record<string, ConnectionMessage>>({})
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8 p-6">
+    <div className="mx-auto max-w-3xl space-y-8">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Mailboxes</h1>
-        <p className="text-sm text-zinc-600 dark:text-zinc-300">
+        <p className="text-sm text-muted-foreground">
           Daily cap defaults to 30 and cannot go above 50. New mailboxes ramp: 10 a day for the first week, then 20, then the mailbox cap.
         </p>
       </header>
-      <section className="space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+      <section className="space-y-3 rounded-lg border bg-card p-4">
         <h2 className="text-lg font-medium">Microsoft 365 / Outlook</h2>
         {microsoft.available ? (
-          <a className="inline-block rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white" href={microsoft.startPath}>
+          <a className="inline-block rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground" href={microsoft.startPath}>
             Sign in with Microsoft
           </a>
         ) : (
-          <p className="text-sm text-zinc-700 dark:text-zinc-200">{microsoft.message}</p>
+          <p className="text-sm text-muted-foreground">{microsoft.message}</p>
         )}
       </section>
-      <section className="space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+      <section className="space-y-3 rounded-lg border bg-card p-4">
         <h2 className="text-lg font-medium">SMTP / IMAP</h2>
         <MailboxForm
           initial={emptyMailboxForm()}
@@ -74,12 +74,12 @@ export function MailboxesPage({
         {mailboxes.map((mailbox) => {
           const report = deliverability[mailbox.id]
           return (
-            <li key={mailbox.id} className="space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+            <li key={mailbox.id} className="space-y-3 rounded-lg border bg-card p-4">
               <div>
                 <h2 className="text-lg font-medium">{mailbox.fromName}</h2>
-                <p className="text-sm text-zinc-600 dark:text-zinc-300">{mailbox.email}</p>
+                <p className="text-sm text-muted-foreground">{mailbox.email}</p>
                 <p className="text-sm">{capLine(mailbox)}</p>
-                <p className="text-sm text-zinc-600 dark:text-zinc-300">
+                <p className="text-sm text-muted-foreground">
                   {mailbox.sendingDays.join(", ")} {mailbox.windowStart}–{mailbox.windowEnd} {mailbox.timeZone}. Gap {mailbox.minGapMinutes}–{mailbox.maxGapMinutes} min.
                 </p>
               </div>
@@ -98,7 +98,7 @@ export function MailboxesPage({
               ) : null}
               <button
                 type="button"
-                className="rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700"
+                className="rounded-md border px-3 py-2 text-sm"
                 onClick={() => {
                   void onTest(mailbox.id).then((result) => {
                     setConnection((current) => ({ ...current, [mailbox.id]: result }))
@@ -109,8 +109,8 @@ export function MailboxesPage({
               </button>
               {connection[mailbox.id] ? (
                 <div className="text-sm">
-                  <p>{connection[mailbox.id].smtp.message}</p>
-                  <p>{connection[mailbox.id].imap.message}</p>
+                  <p>{connection[mailbox.id]?.smtp.message}</p>
+                  <p>{connection[mailbox.id]?.imap.message}</p>
                 </div>
               ) : null}
               {report ? <DeliverabilityCard report={report} /> : null}
@@ -142,7 +142,7 @@ function ReconnectForm({ onSubmit }: { onSubmit: (values: { smtpPassword: string
         New IMAP password
         <input className="mt-1 w-full rounded-md border px-2 py-1" type="password" autoComplete="off" value={imapPassword} onChange={(event) => setImapPassword(event.target.value)} />
       </label>
-      <button type="submit" className="rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white">Reconnect</button>
+      <button type="submit" className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground">Reconnect</button>
       {message ? <p className="text-sm">{message}</p> : null}
     </form>
   )

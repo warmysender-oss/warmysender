@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { runDoctor } from "./doctor.js"
-import type { DeliverabilityReport } from "../packages/core/src/dns/index.js"
+import type { DeliverabilityReport } from "@warmysender/core"
 
 describe("doctor", () => {
   it("prints a fix for each failed check and passes when nothing is wrong", async () => {
@@ -41,8 +41,8 @@ describe("doctor", () => {
     const passed = await runDoctor({
       env: {
         DATABASE_URL: "postgres://app@db/app",
-        ENCRYPTION_KEY: "key",
-        SESSION_SECRET: "secret",
+        ENCRYPTION_KEY: "ZGV2LW9ubHktbm90LWZvci1wcm9kdWN0aW9uLXVzZSE=",
+        SESSION_SECRET: "dev-only-session-secret-change!!",
         PUBLIC_URL: "https://mail.example.com",
       },
       now: new Date("2026-01-03T15:00:00.000Z"),

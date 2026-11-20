@@ -22,7 +22,7 @@ import {
   weekdayToIso,
   type MailboxSettings,
   type SecretCodec,
-} from "../../../../packages/core/src/mail/index.js"
+} from "@warmysender/core"
 import type { MailboxRecord, MailboxStore, MailboxView } from "./types.js"
 import { testMailboxConnection, type MailboxProbes } from "./test-connection.js"
 import type { ProbeInput } from "./types.js"

@@ -4,14 +4,14 @@ const STATUS_CLASS = {
   pass: "border-green-200 bg-green-50 text-green-900 dark:border-green-900 dark:bg-green-950 dark:text-green-100",
   warn: "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100",
   fail: "border-red-200 bg-red-50 text-red-950 dark:border-red-900 dark:bg-red-950 dark:text-red-100",
-  unknown: "border-zinc-200 bg-zinc-50 text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100",
+  unknown: "border bg-muted text-foreground",
 } as const
 
 export function DeliverabilityCard({ report }: { report: DeliverabilityReport }) {
   return (
     <section className="space-y-3">
       <h3 className="text-base font-semibold">Deliverability</h3>
-      <p className="text-sm text-zinc-600 dark:text-zinc-300">
+      <p className="text-sm text-muted-foreground">
         DNS only, for {report.domain}. This check does not connect to the mail server.
       </p>
       {report.launchWarning ? (
