@@ -1,11 +1,10 @@
-import { and, count, desc, eq, gte, inArray, or } from "drizzle-orm";
+import { and, count, desc, eq, inArray, or } from "drizzle-orm";
 import {
   campaignMailboxes,
   campaignSteps,
   campaigns,
   contacts,
   decryptString,
-  effectiveDailyCap,
   encryptString,
   enrollments,
   inboundMessages,
@@ -16,13 +15,13 @@ import {
   replyDrafts,
   settings,
   suppressions,
-  todayInTimeZone,
   verifyApiKey,
   apiKeys,
   type AppDatabase,
 } from "@warmysender/core";
 import { ApiError } from "./errors.js";
 import { isUniqueViolation } from "../http.js";
+import { loadStatsOverview } from "../stats/queries.js";
 import type {
   AppServices,
   Campaign,
@@ -523,62 +522,38 @@ async function launchProblems(db: AppDatabase, campaign: Campaign): Promise<stri
 }
 
 async function campaignStats(db: AppDatabase, campaign: Campaign): Promise<CampaignStats> {
-  const sentRows = await db
-    .select({ stepId: messages.stepId })
-    .from(messages)
-    .where(and(eq(messages.campaignId, campaign.id), eq(messages.status, "sent")));
-  const replyCount = await countJoin(db, campaign.id, "reply");
-  const bounceCount = await countJoin(db, campaign.id, "bounce");
-  const [unsub] = await db
-    .select({ n: count() })
-    .from(enrollments)
-    .where(and(eq(enrollments.campaignId, campaign.id), eq(enrollments.stopReason, "unsubscribe")));
-  const [still] = await db
-    .select({ n: count() })
-    .from(enrollments)
-    .where(and(eq(enrollments.campaignId, campaign.id), eq(enrollments.status, "active")));
-  const sent = sentRows.length;
+  const overview = await loadStatsOverview(db);
+  const row = overview.campaigns.find((item) => item.campaignId === campaign.id);
   return {
     campaign_id: campaign.id,
-    sent,
-    replies: replyCount,
-    reply_rate: sent === 0 ? null : replyCount / sent,
-    bounces: bounceCount,
-    unsubscribes: numberOf(unsub?.n),
-    still_in_sequence: numberOf(still?.n),
-    steps: campaign.steps.map((step) => ({
-      step_id: step.id,
-      position: step.position,
-      sent: sentRows.filter((row) => row.stepId === step.id).length,
-      replies: 0,
-      bounces: 0,
-      unsubscribes: 0,
-    })),
+    sent: row?.sent ?? 0,
+    replies: row?.replies ?? 0,
+    reply_rate: row && row.sent > 0 ? row.replyRate : null,
+    bounces: row?.bounces ?? 0,
+    unsubscribes: row?.unsubscribes ?? 0,
+    still_in_sequence: row?.stillInSequence ?? 0,
+    steps: campaign.steps.map((step) => {
+      const stat = row?.steps.find((item) => item.stepId === step.id);
+      return {
+        step_id: step.id,
+        position: step.position,
+        sent: stat?.sent ?? 0,
+        replies: stat?.replies ?? 0,
+        bounces: stat?.bounces ?? 0,
+        unsubscribes: stat?.unsubscribes ?? 0,
+      };
+    }),
   };
 }
 
-async function countJoin(db: AppDatabase, campaignId: string, kind: string): Promise<number> {
-  const [row] = await db
-    .select({ n: count() })
-    .from(inboundMessages)
-    .innerJoin(enrollments, eq(inboundMessages.enrollmentId, enrollments.id))
-    .where(and(eq(enrollments.campaignId, campaignId), eq(inboundMessages.kind, kind)));
-  return numberOf(row?.n);
-}
-
 async function mailboxHealth(db: AppDatabase, row: typeof mailboxes.$inferSelect, now: Date): Promise<MailboxHealth> {
-  const today = todayInTimeZone(now, row.timezone);
-  const ramp = effectiveDailyCap({ configuredCap: row.dailyCap, rampStartedOn: row.rampStartedOn, today });
-  const start = localMidnightUtc(row.timezone, now);
-  const [sent] = await db
-    .select({ n: count() })
-    .from(messages)
-    .where(and(eq(messages.mailboxId, row.id), eq(messages.status, "sent"), gte(messages.sentAt, start)));
+  const overview = await loadStatsOverview(db, now);
+  const day = overview.mailboxes.find((item) => item.mailboxId === row.id);
   return {
     ...toMailbox(row),
-    sent_today: numberOf(sent?.n),
-    cap_today: ramp.cap,
-    ramp_day: ramp.inRamp ? ramp.rampDay : null,
+    sent_today: day?.sentToday ?? 0,
+    cap_today: day?.effectiveCap ?? row.dailyCap,
+    ramp_day: day && day.rampPhase !== "graduated" ? day.rampDay : null,
     health: row.health,
   };
 }
@@ -602,25 +577,4 @@ function offsetOf(cursor: string | undefined): number {
 function numberOf(value: unknown): number {
   const parsed = typeof value === "number" ? value : Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
-}
-
-/** UTC instant of midnight at the start of `now`'s calendar day in `timeZone`. */
-function localMidnightUtc(timeZone: string, now: Date): Date {
-  const date = todayInTimeZone(now, timeZone);
-  const utcGuess = new Date(`${date}T00:00:00.000Z`);
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    hourCycle: "h23",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  }).formatToParts(utcGuess);
-  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  let hour = Number(map.hour);
-  if (hour === 24) hour = 0;
-  const asUtc = Date.UTC(Number(map.year), Number(map.month) - 1, Number(map.day), hour, Number(map.minute), Number(map.second));
-  return new Date(utcGuess.getTime() - (asUtc - utcGuess.getTime()));
 }
