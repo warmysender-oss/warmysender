@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+
+# Build output
+dist/
+build/
+out/
+.next/
+.nuxt/
+.output/
+.turbo/
+*.tsbuildinfo
+coverage/
+
+# Environment (keep the example)
+.env*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime / local data
+*.pid
+*.sqlite
+*.sqlite3
+*.db
+uploads/
+tmp/
+.cache/
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
