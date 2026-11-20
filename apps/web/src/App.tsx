@@ -3,6 +3,7 @@ import { Shell } from "@/components/shell";
 import { useAuth } from "@/lib/auth";
 import { DashboardPage } from "@/pages/dashboard";
 import { LoginPage } from "@/pages/login";
+import { InboxPage } from "@/pages/inbox/page";
 import { PlaceholderPage } from "@/pages/placeholder";
 import { RegisterPage } from "@/pages/register";
 import { SettingsPage } from "@/pages/settings";
@@ -27,7 +28,7 @@ export function App() {
         <Route path="/mailboxes" element={<PlaceholderPage title="Mailboxes" body="Connect SMTP, IMAP, or Microsoft 365 mailboxes in the next milestone. Secrets will be encrypted at rest." />} />
         <Route path="/contacts" element={<PlaceholderPage title="Contacts" body="CSV import, lists, and the suppression list land in a later milestone." />} />
         <Route path="/campaigns" element={<PlaceholderPage title="Campaigns" body="Sequence steps, preview, and the launch check are not built yet." />} />
-        <Route path="/inbox" element={<PlaceholderPage title="Inbox" body="Replies, auto-replies, and bounces will show up here after the inbox milestone." />} />
+        <Route path="/inbox" element={<InboxPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

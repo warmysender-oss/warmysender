@@ -10,6 +10,7 @@ describe("inbox list labels", () => {
     expect(inboxBadge("reply").label).toBe("Reply");
     expect(inboxBadge("bounce").label).toBe("Bounce");
     expect(inboxBadge("delivery_delay").label).toBe("Delayed");
+    expect(inboxBadge("other").label).toBe("Other");
     expect(inboxBadge("unmatched").label).toBe("Unmatched");
   });
 

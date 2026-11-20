@@ -1,6 +1,6 @@
 export { detectAutoReply } from "./auto-reply.js";
 export { bracketMessageId, extractEmail, extractMessageIds, normalizeMessageId, normalizeSubject } from "./codec.js";
-export { applyEffectPlan, decideInbound, effectPlan } from "./decide.js";
+export { applyEffectPlan, decideInbound, effectPlan, storedKind } from "./decide.js";
 export { analyzeBounce, isPermanentFailure, recipientsFromPlainText } from "./dsn.js";
 export { matchReply } from "./match-reply.js";
 export { parseRawEmail } from "./parse-raw.js";

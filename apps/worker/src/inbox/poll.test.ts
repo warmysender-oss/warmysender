@@ -98,7 +98,7 @@ describe("pollMailbox", () => {
     expect(store.commits[0]?.plan).toEqual([
       { op: "store_inbound", kind: "reply" },
       { op: "set_contact_status", contactId: "contact-jane", status: "replied" },
-      { op: "stop_enrollments", contactId: "contact-jane", reason: "replied" },
+      { op: "stop_enrollments", contactId: "contact-jane", reason: "reply" },
     ]);
   });
 

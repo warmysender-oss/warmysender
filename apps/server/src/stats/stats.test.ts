@@ -21,15 +21,15 @@ function data(): StatsData {
       { campaignId: "camp-2", stepId: "other", contactId: "ada", kind: "reply" },
     ],
     unsubscribes: [
-      { campaignId: "camp-1", stepId: "step-2", contactId: "sam" },
-      { campaignId: "camp-1", stepId: "step-2", contactId: "sam" },
-      { campaignId: "camp-1", stepId: null, contactId: "lee" },
+      { campaignId: "camp-1", stepPosition: 2, contactId: "sam" },
+      { campaignId: "camp-1", stepPosition: 2, contactId: "sam" },
+      { campaignId: "camp-1", stepPosition: null, contactId: "lee" },
     ],
     enrollments: [
-      { campaignId: "camp-1", contactId: "jane", currentStepId: "step-2", status: "active" },
-      { campaignId: "camp-1", contactId: "sam", currentStepId: "step-1", status: "stopped" },
-      { campaignId: "camp-1", contactId: "lee", currentStepId: "step-1", status: "active" },
-      { campaignId: "camp-2", contactId: "ada", currentStepId: "other", status: "active" },
+      { campaignId: "camp-1", contactId: "jane", currentStep: 2, status: "active" },
+      { campaignId: "camp-1", contactId: "sam", currentStep: 1, status: "stopped" },
+      { campaignId: "camp-1", contactId: "lee", currentStep: 1, status: "active" },
+      { campaignId: "camp-2", contactId: "ada", currentStep: 1, status: "active" },
     ],
   };
 }

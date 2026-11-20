@@ -16,6 +16,8 @@ export function inboxBadge(kind: string): InboxBadge {
       return { label: "Bounce", tone: "bounce" };
     case "delivery_delay":
       return { label: "Delayed", tone: "neutral" };
+    case "other":
+      return { label: "Other", tone: "neutral" };
     default:
       return { label: "Unmatched", tone: "neutral" };
   }

@@ -30,14 +30,16 @@ export interface InboundStat {
 
 export interface UnsubscribeStat {
   campaignId: string;
-  stepId: string | null;
+  /** 1-based step position. Null when the unsubscribe is only known at campaign level. */
+  stepPosition: number | null;
   contactId: string;
 }
 
 export interface EnrollmentStat {
   campaignId: string;
   contactId: string;
-  currentStepId: string;
+  /** 1-based step position, matching `enrollments.current_step`. */
+  currentStep: number;
   status: string;
 }
 
@@ -134,8 +136,8 @@ export function campaignStats(campaignId: string, steps: readonly { id: string; 
       ...countStats({
         outbound: outbound.filter((message) => message.stepId === step.id),
         inbound: inbound.filter((message) => message.stepId === step.id),
-        unsubscribes: unsubscribes.filter((message) => message.stepId === step.id),
-        enrollments: enrollments.filter((enrollment) => enrollment.currentStepId === step.id),
+        unsubscribes: unsubscribes.filter((message) => message.stepPosition === step.position),
+        enrollments: enrollments.filter((enrollment) => enrollment.currentStep === step.position),
       }),
     }));
   return {

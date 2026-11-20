@@ -21,7 +21,7 @@ const snapshot: StatsSnapshot = {
     ],
     unsubscribes: [],
     enrollments: [
-      { campaignId: "camp-1", contactId: "jane", currentStepId: "step-1", status: "active" },
+      { campaignId: "camp-1", contactId: "jane", currentStep: 1, status: "active" },
     ],
   },
   mailboxes: [

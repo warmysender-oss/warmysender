@@ -1,7 +1,7 @@
 import { detectAutoReply } from "./auto-reply.js";
 import { analyzeBounce } from "./dsn.js";
 import { matchReply } from "./match-reply.js";
-import type { InboundDecision, InboundMail, InboxEffect, SentMessageRef } from "./types.js";
+import type { InboundDecision, InboundKind, InboundMail, InboxEffect, SentMessageRef } from "./types.js";
 
 /**
  * Classify one inbound message.
@@ -76,6 +76,12 @@ export function decideInbound(mail: InboundMail, sent: readonly SentMessageRef[]
   };
 }
 
+/** Schema `inbound_messages.kind` has no delay or unmatched value. Both are stored as `other`. */
+export function storedKind(kind: InboundKind): "reply" | "auto_reply" | "bounce" | "other" {
+  if (kind === "reply" || kind === "auto_reply" || kind === "bounce") return kind;
+  return "other";
+}
+
 /** Operations the worker applies, in order, inside one transaction. */
 export function effectPlan(decision: InboundDecision): InboxEffect[] {
   const effects: InboxEffect[] = [{ op: "store_inbound", kind: decision.kind }];
@@ -85,7 +91,7 @@ export function effectPlan(decision: InboundDecision): InboxEffect[] {
       effects.push({
         op: "stop_enrollments",
         contactId: contact.contactId,
-        reason: contact.status === "bounced" ? "bounced" : "replied",
+        reason: contact.status === "bounced" ? "bounce" : "reply",
       });
     }
   }

@@ -1,6 +1,8 @@
 /** Local shapes for inbox decisions. Task 01's Drizzle rows map onto these. */
 
 export interface SentMessageRef {
+  /** `messages.id` when the row came from the database. */
+  id?: string;
   messageId: string;
   contactId: string;
   contactEmail: string;
@@ -67,7 +69,7 @@ export interface InboundDecision {
 export type InboxEffect =
   | { op: "store_inbound"; kind: InboundKind }
   | { op: "set_contact_status"; contactId: string; status: "replied" | "bounced" }
-  | { op: "stop_enrollments"; contactId: string; reason: "replied" | "bounced" }
+  | { op: "stop_enrollments"; contactId: string; reason: "reply" | "bounce" }
   | { op: "suppress_email"; email: string };
 
 export const INBOX_POLL_EVERY_MS = 5 * 60 * 1000;

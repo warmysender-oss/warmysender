@@ -4,9 +4,12 @@ import express, { type ErrorRequestHandler, type Express } from "express";
 import type { Config, AppDatabase } from "@warmysender/core";
 import { HttpError } from "./http.js";
 import { attachUser } from "./middleware.js";
+import { inboxRouter } from "./inbox/routes.js";
 import { apiKeysRouter } from "./routes/api-keys.js";
 import { authRouter } from "./routes/auth.js";
 import { invitesRouter } from "./routes/invites.js";
+import type { ReplyTransport } from "./inbox/send-reply.js";
+import { setupRouter, statsRouter } from "./stats/routes.js";
 import "./types.js";
 
 export type CreateAppOptions = {
@@ -14,6 +17,8 @@ export type CreateAppOptions = {
   config: Config;
   serveWeb: boolean;
   webDist: string;
+  /** Tests pass a fake sender. Production uses SMTP from the mailbox that owns the thread. */
+  replyTransport?: ReplyTransport;
 };
 
 function findHttpError(error: unknown): HttpError | null {
@@ -37,6 +42,9 @@ export function createApp(options: CreateAppOptions): Express {
   app.use("/api/auth", authRouter(db, config));
   app.use("/api/invites", invitesRouter(db, config));
   app.use("/api/api-keys", apiKeysRouter(db));
+  app.use("/api/inbox", inboxRouter(db, config, options.replyTransport));
+  app.use("/api/stats", statsRouter(db));
+  app.use("/api/setup", setupRouter(db));
 
   if (options.serveWeb && existsSync(options.webDist)) {
     app.use(express.static(options.webDist));
