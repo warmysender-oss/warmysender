@@ -4,7 +4,7 @@
 
 **Please do not report security vulnerabilities through public GitHub issues, discussions or pull requests.**
 
-Report them privately through our support page: **https://warmysender.com/support** — choose a security topic if one is offered, and mention "Open Cold Email security" in your message.
+Report them privately through our support page: **https://warmysender.com/support** — choose a security topic if one is offered, and mention "open-source WarmySender security" in your message.
 
 Please include:
 

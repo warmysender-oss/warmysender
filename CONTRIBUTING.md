@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in Open Cold Email! The project is in early development, so the codebase and these guidelines will change quickly.
+Thanks for your interest in open-source WarmySender! The project is in early development, so the codebase and these guidelines will change quickly.
 
 ## Ground rules
 
