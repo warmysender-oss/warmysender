@@ -15,5 +15,6 @@ export { decryptString, encryptString } from "./crypto.js";
 export * from "./dns/index.js";
 export * from "./mail/index.js";
 export { createDb, type AppDatabase } from "./db/client.js";
+export * from "./campaigns/index.js";
 export { migrationsFolder, runMigrations } from "./db/migrate.js";
 export * from "./db/schema.js";
