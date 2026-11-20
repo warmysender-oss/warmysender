@@ -4,7 +4,28 @@ Open-source cold email you can self-host. The open-source Instantly alternative,
 
 Hosted WarmySender adds warmup, email verification, leads and LinkedIn → https://warmysender.com
 
-> **Under construction.** This project is in early development. Nothing here is ready to run yet.
+> **Under construction.** Accounts and the app shell run. Mailboxes, campaigns, and sending are not built yet.
+
+## Development
+
+```bash
+pnpm install
+cp .env.example .env   # fill DATABASE_URL, ENCRYPTION_KEY, SESSION_SECRET, PUBLIC_URL
+pnpm dev:server        # API on http://localhost:3000
+pnpm dev:web           # UI on http://localhost:5173
+```
+
+Or start the API and the UI together with `pnpm dev`. The worker is `pnpm dev:worker`.
+
+Docker, from a clean clone:
+
+```bash
+docker compose up --build
+```
+
+That uses development-only secrets so the stack boots. Do not use those secrets on a public server. `NODE_ENV=production` refuses them. Every variable is documented in [.env.example](.env.example).
+
+Fork it and have your agent build the tool you want. Start with [AGENTS.md](AGENTS.md).
 
 ## Self-host or hosted
 

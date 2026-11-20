@@ -1,0 +1,76 @@
+# Local install: `docker compose up --build` then open http://localhost:3000
+# The encryption key and session secret below are published development defaults.
+# NODE_ENV=production refuses them. Set real values in the environment before a public deploy.
+# Optional SMTP catcher: `docker compose --profile mailpit up --build` (UI http://localhost:8025, SMTP localhost:1025).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: warmysender
+      POSTGRES_PASSWORD: warmysender
+      POSTGRES_DB: warmysender
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U warmysender -d warmysender"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://warmysender:warmysender@postgres:5432/warmysender
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-ZGV2LW9ubHktbm90LWZvci1wcm9kdWN0aW9uLXVzZSE=}
+      SESSION_SECRET: ${SESSION_SECRET:-dev-only-session-secret-change!!}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:3000}
+      PORT: 3000
+      HOST: 0.0.0.0
+      NODE_ENV: ${NODE_ENV:-development}
+      MS_CLIENT_ID: ${MS_CLIENT_ID:-}
+      MS_CLIENT_SECRET: ${MS_CLIENT_SECRET:-}
+      MS_TENANT: ${MS_TENANT:-common}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  worker:
+    build: .
+    command: ["node", "apps/worker/dist/index.js"]
+    environment:
+      DATABASE_URL: postgres://warmysender:warmysender@postgres:5432/warmysender
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-ZGV2LW9ubHktbm90LWZvci1wcm9kdWN0aW9uLXVzZSE=}
+      SESSION_SECRET: ${SESSION_SECRET:-dev-only-session-secret-change!!}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:3000}
+      NODE_ENV: ${NODE_ENV:-development}
+      MS_CLIENT_ID: ${MS_CLIENT_ID:-}
+      MS_CLIENT_SECRET: ${MS_CLIENT_SECRET:-}
+      MS_TENANT: ${MS_TENANT:-common}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  mailpit:
+    image: axllent/mailpit:v1.29.7
+    profiles: ["mailpit"]
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+
+volumes:
+  pgdata:

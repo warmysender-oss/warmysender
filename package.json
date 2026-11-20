@@ -1,0 +1,31 @@
+{
+  "name": "warmysender",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.4",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @warmysender/server --filter @warmysender/web dev",
+    "dev:server": "pnpm --filter @warmysender/server dev",
+    "dev:worker": "pnpm --filter @warmysender/worker dev",
+    "dev:web": "pnpm --filter @warmysender/web dev",
+    "build": "pnpm --filter @warmysender/core build && pnpm --filter @warmysender/server build && pnpm --filter @warmysender/worker build && pnpm --filter @warmysender/web build",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "drizzle-kit": "^0.31.11",
+    "eslint": "^10.15.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "^8.73.0",
+    "vitest": "^5.1.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@warmysender/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@warmysender/core": "workspace:*",
+    "pg-boss": "^12.11.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.15",
+    "tsx": "^4.20.6",
+    "typescript": "5.9.3"
+  }
+}
