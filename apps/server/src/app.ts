@@ -1,0 +1,74 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import express, { type ErrorRequestHandler, type Express } from "express";
+import type { Config, AppDatabase } from "@warmysender/core";
+import { HttpError } from "./http.js";
+import { attachUser } from "./middleware.js";
+import { apiKeysRouter } from "./routes/api-keys.js";
+import { authRouter } from "./routes/auth.js";
+import { invitesRouter } from "./routes/invites.js";
+import "./types.js";
+
+export type CreateAppOptions = {
+  db: AppDatabase;
+  config: Config;
+  serveWeb: boolean;
+  webDist: string;
+};
+
+function findHttpError(error: unknown): HttpError | null {
+  if (error instanceof HttpError) return error;
+  if (typeof error === "object" && error !== null && "cause" in error) {
+    return findHttpError((error as { cause?: unknown }).cause);
+  }
+  return null;
+}
+
+export function createApp(options: CreateAppOptions): Express {
+  const { db, config } = options;
+  const app = express();
+  app.disable("x-powered-by");
+  app.use(express.json({ limit: "1mb" }));
+  app.use(attachUser(db));
+
+  app.get(["/health", "/api/health"], (_req, res) => {
+    res.json({ ok: true });
+  });
+  app.use("/api/auth", authRouter(db, config));
+  app.use("/api/invites", invitesRouter(db, config));
+  app.use("/api/api-keys", apiKeysRouter(db));
+
+  if (options.serveWeb && existsSync(options.webDist)) {
+    app.use(express.static(options.webDist));
+    app.use((req, res, next) => {
+      if (req.method !== "GET" && req.method !== "HEAD") {
+        next();
+        return;
+      }
+      if (req.path.startsWith("/api") || req.path === "/health") {
+        next();
+        return;
+      }
+      res.sendFile(join(options.webDist, "index.html"), (error) => {
+        if (error) next(error);
+      });
+    });
+  }
+
+  const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+    const httpError = findHttpError(err);
+    if (httpError) {
+      res.status(httpError.status).json({ error: httpError.message });
+      return;
+    }
+    if (err instanceof SyntaxError) {
+      res.status(400).json({ error: "Request body must be JSON." });
+      return;
+    }
+    const message = err instanceof Error ? err.message : "unknown error";
+    console.error(`[server] request failed: ${message}`);
+    res.status(500).json({ error: "Internal server error" });
+  };
+  app.use(errorHandler);
+  return app;
+}

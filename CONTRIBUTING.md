@@ -13,7 +13,14 @@ Thanks for your interest in open-source WarmySender! The project is in early dev
 1. **Open an issue first** for anything bigger than a small fix, so we can agree on the approach before you write code.
 2. **Fork** the repository and create a branch from `main` (`fix/short-description` or `feat/short-description`).
 3. **Make your change.** Keep pull requests focused on one thing. Add or update tests where it makes sense.
-4. **Check your work** — run the linter and tests (commands will be documented here once the app lands).
+4. **Check your work** from the repo root:
+
+   ```bash
+   pnpm install
+   pnpm typecheck
+   pnpm lint
+   pnpm test
+   ```
 5. **Open a pull request** and fill in the template. Link the issue it closes.
 
 ## Commit messages
