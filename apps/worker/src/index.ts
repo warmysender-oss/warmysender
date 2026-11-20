@@ -48,12 +48,18 @@ async function main(): Promise<void> {
     },
   });
   await boss.work(SEND_TICK_QUEUE, async () => {
-    await executeSendTick({
-      db,
-      now: new Date(),
-      publicUrl: config.publicUrl,
-      transport,
-    });
+    try {
+      await executeSendTick({
+        db,
+        now: new Date(),
+        publicUrl: config.publicUrl,
+        transport,
+      });
+    } catch (error) {
+      // A failed tick must never be silent: self-hosters debug from these logs.
+      console.error(`[send] event=tick_failed error=${error instanceof Error ? error.message : String(error)}`);
+      throw error;
+    }
   });
   await boss.schedule(SEND_TICK_QUEUE, "* * * * *");
   console.log("[worker] started");

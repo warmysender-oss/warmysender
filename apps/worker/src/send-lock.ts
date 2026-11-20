@@ -7,6 +7,8 @@ import { SEND_CLAIM_MS, type AppDatabase } from "@warmysender/core";
  * send_claim_until keeps the claim after commit, so the SMTP call does not
  * need to hold the database transaction open.
  */
+// Raw SQL: the postgres driver does not serialize a Date parameter here (PGlite in tests does),
+// so timestamps go in as ISO text with an explicit ::timestamptz cast.
 export async function claimMailboxes(
   db: AppDatabase,
   ids: readonly string[],
@@ -19,11 +21,11 @@ export async function claimMailboxes(
     WITH locked AS (
       SELECT id FROM mailboxes
       WHERE id IN (${sql.join(unique.map((id) => sql`${id}::uuid`), sql`, `)})
-        AND (send_claim_until IS NULL OR send_claim_until <= ${now})
+        AND (send_claim_until IS NULL OR send_claim_until <= ${now.toISOString()}::timestamptz)
       FOR UPDATE SKIP LOCKED
     )
     UPDATE mailboxes
-    SET send_claim_until = ${until}
+    SET send_claim_until = ${until.toISOString()}::timestamptz
     WHERE id IN (SELECT id FROM locked)
     RETURNING id
   `);
@@ -40,7 +42,7 @@ export async function releaseMailboxClaims(
     UPDATE mailboxes
     SET send_claim_until = NULL
     WHERE id IN (${sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `)})
-      AND send_claim_until = ${until}
+      AND send_claim_until = ${until.toISOString()}::timestamptz
   `);
 }
 
