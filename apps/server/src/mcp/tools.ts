@@ -116,7 +116,7 @@ export const MCP_TOOLS: readonly McpTool[] = [
   {
     name: "update_contact_status",
     description: describe(
-      "Sets a contact's status. Statuses: active, replied, bounced, unsubscribed, invalid, risky.",
+      "Sets a contact's status. Statuses: active, replied, bounced, unsubscribed, invalid, risky. Bounced and unsubscribed contacts are suppressed.",
       "A person should be marked replied, unsubscribed, invalid, or risky.",
     ),
     inputSchema: objectSchema({ id: string, status: string }, ["id", "status"]),
@@ -238,7 +238,7 @@ export const MCP_TOOLS: readonly McpTool[] = [
   },
   {
     name: "pause_campaign",
-    description: describe("Pauses a running campaign so the scheduler stops taking it.", "Sends should stop without deleting the campaign."),
+    description: describe("Pauses a running campaign so the scheduler stops taking new sends.", "Sends should stop without deleting the campaign."),
     inputSchema: objectSchema({ id: string }, ["id"]),
     call: (services, args) =>
       route(services, "POST", `/campaigns/${encodeURIComponent(id(arg(args), "id"))}/pause`, {}),
@@ -256,8 +256,8 @@ export const MCP_TOOLS: readonly McpTool[] = [
   {
     name: "enroll",
     description: describe(
-      "Enrolls contacts or a whole list. Suppressed and non-active contacts are not enrolled.",
-      "The campaign exists and people should join it. Starting still happens separately.",
+      "Adds contacts or a list to the campaign audience. Suppressed and non-active contacts are not counted. Start creates the enrollment rows.",
+      "The campaign exists and people should join it. Call start_campaign when it should run.",
     ),
     inputSchema: objectSchema({ id: string, contact_ids: { type: "array", items: string }, list_id: string }, ["id"]),
     call: (services, args) => {

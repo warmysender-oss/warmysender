@@ -10,6 +10,7 @@ import {
   encryptString,
   loadConfig,
   contacts,
+  enrollments,
   mailboxes,
   messages,
   migrationsFolder,
@@ -148,6 +149,10 @@ describe("agent API", () => {
 
     const sent = await db.select().from(messages);
     expect(sent).toEqual([]);
+    const enrolledRows = await db.select().from(enrollments);
+    expect(enrolledRows).toHaveLength(1);
+    expect(enrolledRows[0]?.contactId).toBe(contact.body.data.id);
+    expect(enrolledRows[0]?.status).toBe("active");
   });
 
   it("saves a reply draft and does not mark it sent", async () => {

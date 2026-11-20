@@ -48,7 +48,9 @@ export const API_ROUTES: readonly ApiRoute[] = [
     path: "/contacts/{id}",
     operationId: "updateContactStatus",
     summary: "Update a contact's status",
-    description: "Sets status to active, replied, bounced, unsubscribed, invalid, or risky. " + SAFETY,
+    description:
+      "Sets status to active, replied, bounced, unsubscribed, invalid, or risky. Bounced and unsubscribed contacts are added to the suppression list. " +
+      SAFETY,
     tag: "Contacts",
   },
   {
@@ -138,7 +140,7 @@ export const API_ROUTES: readonly ApiRoute[] = [
     path: "/campaigns/{id}/pause",
     operationId: "pauseCampaign",
     summary: "Pause a campaign",
-    description: "Stops the scheduler from taking new sends for this campaign. " + SAFETY,
+    description: "Pauses a running campaign so the scheduler stops taking new sends. " + SAFETY,
     tag: "Campaigns",
   },
   {
@@ -154,7 +156,9 @@ export const API_ROUTES: readonly ApiRoute[] = [
     path: "/campaigns/{id}/enrollments",
     operationId: "enroll",
     summary: "Enroll contacts",
-    description: "Enrolls contact ids, a list, or both. Suppressed and non-active contacts are not enrolled. " + SAFETY,
+    description:
+      "Adds contacts or a list to the campaign audience. Suppressed and non-active contacts are not counted. Start creates the enrollment rows. " +
+      SAFETY,
     tag: "Enrollments",
   },
   {

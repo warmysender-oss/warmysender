@@ -10,7 +10,7 @@ export function mountAgentApi(
   app: Express,
   options: { db: AppDatabase; config: Config; fetchImpl?: FetchLike },
 ): void {
-  const services = createDbServices(options.db);
+  const services = createDbServices(options.db, { publicUrl: options.config.publicUrl });
   const stores = createWarmyStores(options.db, options.config.encryptionKey);
 
   app.use(async (req: Request, res: Response, next: NextFunction) => {
