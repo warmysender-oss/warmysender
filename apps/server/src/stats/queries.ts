@@ -116,7 +116,8 @@ export async function loadStatsOverview(db: AppDatabase, now = new Date()): Prom
 }
 
 /**
- * DNS checks are stored by the mailbox task. Until that column exists, the DNS step stays open.
+ * Deliverability is computed when someone opens a mailbox. `mailboxes` has no stored DNS result,
+ * so the first-run DNS step stays open.
  * A campaign counts as the demo when every enrolled contact uses a `.test` address.
  */
 export async function loadSetup(db: AppDatabase): Promise<SetupCounts> {
