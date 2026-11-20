@@ -1,0 +1,30 @@
+name: Docker smoke test
+
+# Unit tests run TypeScript directly; this job runs the real compiled images the way a self-hoster does,
+# so an import or startup error in the built app or worker fails CI instead of failing a stranger's first run.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start the stack
+        run: docker compose up -d --build
+      - name: App answers /health
+        run: |
+          for i in $(seq 1 60); do curl -sf http://localhost:3000/health && exit 0; sleep 2; done
+          docker compose logs app; exit 1
+      - name: Worker is still running after 30 seconds
+        run: |
+          sleep 30
+          state=$(docker compose ps worker --format '{{.State}}')
+          echo "worker state: $state"
+          if [ "$state" != "running" ]; then docker compose logs worker; exit 1; fi
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs

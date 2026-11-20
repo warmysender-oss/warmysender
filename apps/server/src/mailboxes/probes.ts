@@ -1,5 +1,8 @@
 import nodemailer from "nodemailer"
-import { ImapFlow } from "imapflow"
+import imapflow from "imapflow"
+
+// imapflow is CommonJS: read named values off the default export so the compiled app loads it.
+const { ImapFlow } = imapflow
 import type { ProbeInput } from "./types.js"
 
 const TIMEOUT_MS = 15_000

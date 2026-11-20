@@ -1,4 +1,7 @@
-import { AuthenticationFailure, ImapFlow } from "imapflow";
+import imapflow from "imapflow";
+
+// imapflow is CommonJS: named ESM imports fail in the compiled app (Node), so read them off the default export.
+const { AuthenticationFailure, ImapFlow } = imapflow;
 import { ImapAuthError } from "./poll.js";
 
 export interface ImapConnection {
