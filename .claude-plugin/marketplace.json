@@ -1,0 +1,21 @@
+{
+  "name": "warmysender",
+  "owner": {
+    "name": "WarmySender",
+    "url": "https://warmysender.com"
+  },
+  "description": "WarmySender's plugin for self-hosted cold email over MCP.",
+  "plugins": [
+    {
+      "name": "warmysender",
+      "source": "./",
+      "description": "Campaigns, contacts, inbox, and reply drafts. Tools never send or raise limits.",
+      "skills": [
+        "./skills/write-cold-email-sequence",
+        "./skills/launch-campaign-safely",
+        "./skills/deliverability-checklist",
+        "./skills/triage-replies"
+      ]
+    }
+  ]
+}
