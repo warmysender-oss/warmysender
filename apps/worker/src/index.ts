@@ -2,8 +2,11 @@ import { PgBoss } from "pg-boss";
 import { createDb, loadConfig, runMigrations, writeHeartbeat } from "@warmysender/core";
 import { INBOX_POLL_JOB } from "./inbox/index.js";
 import { runInboxPoll } from "./inbox/run.js";
+import { executeSendTick } from "./send-repository.js";
+import { createSmtpTransport } from "./smtp-transport.js";
 
 export const HEARTBEAT_QUEUE = "heartbeat";
+export const SEND_TICK_QUEUE = "send-tick";
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -32,6 +35,17 @@ async function main(): Promise<void> {
   });
   await boss.schedule(INBOX_POLL_JOB, "*/5 * * * *");
   await boss.send(INBOX_POLL_JOB, {});
+  await boss.createQueue(SEND_TICK_QUEUE);
+  const transport = createSmtpTransport(db, config.encryptionKey);
+  await boss.work(SEND_TICK_QUEUE, async () => {
+    await executeSendTick({
+      db,
+      now: new Date(),
+      publicUrl: config.publicUrl,
+      transport,
+    });
+  });
+  await boss.schedule(SEND_TICK_QUEUE, "* * * * *");
   console.log("[worker] started");
 
   const shutdown = (signal: string) => {

@@ -6,8 +6,10 @@ export const NOON = new Date("2026-01-15T12:00:00.000Z");
 export function mailbox(overrides: Partial<MailboxSnapshot> = {}): MailboxSnapshot {
   return {
     id: "mbx_1",
+    fromAddress: "ada@harbor-dental.test",
+    fromName: "Ada",
     timezone: "UTC",
-    sendingDays: [0, 1, 2, 3, 4, 5, 6],
+    sendingDays: [1, 2, 3, 4, 5, 6, 7],
     windowStart: "09:00",
     windowEnd: "17:00",
     dailyCap: 30,
@@ -32,6 +34,7 @@ export function candidate(overrides: Partial<SendCandidate> = {}): SendCandidate
     contactEmail: "jane@harbor-dental.test",
     contactStatus: "active",
     mailboxId: "mbx_1",
+    mailboxChoices: ["mbx_1"],
     stepId: "stp_1",
     stepNumber: 1,
     dueAt: NOON,

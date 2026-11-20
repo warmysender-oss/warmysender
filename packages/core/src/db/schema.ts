@@ -155,6 +155,8 @@ export const mailboxes = pgTable(
     pausedReason: text("paused_reason"),
     consecutiveAuthFailures: integer("consecutive_auth_failures").notNull().default(0),
     lastSendAt: timestamp("last_send_at", { withTimezone: true }),
+    /** Minutes chosen after the last successful send. Null until the mailbox has sent. */
+    nextGapMinutes: integer("next_gap_minutes"),
     imapUidValidity: integer("imap_uid_validity"),
     lastSeenImapUid: integer("last_seen_imap_uid"),
     warmysenderMailboxId: text("warmysender_mailbox_id"),
@@ -167,6 +169,10 @@ export const mailboxes = pgTable(
     check(
       "mailboxes_gap_chk",
       sql`${t.gapMinMinutes} >= 1 and ${t.gapMaxMinutes} >= ${t.gapMinMinutes} and ${t.gapMaxMinutes} <= 1440`,
+    ),
+    check(
+      "mailboxes_next_gap_chk",
+      sql`${t.nextGapMinutes} is null or (${t.nextGapMinutes} >= 1 and ${t.nextGapMinutes} <= 1440)`,
     ),
     check("mailboxes_health_chk", sql`${t.health} in ('unknown', 'healthy', 'paused')`),
     check("mailboxes_smtp_security_chk", sql`${t.smtpSecurity} in ('starttls', 'ssl', 'none')`),

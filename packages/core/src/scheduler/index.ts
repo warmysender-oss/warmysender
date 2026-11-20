@@ -1,5 +1,4 @@
 export {
-  AUTH_FAILURES_BEFORE_PAUSE,
   AUTH_RETRY_DELAY_MS,
   DEFAULT_DAILY_CAP,
   DEFAULT_MAX_GAP_MINUTES,
@@ -13,17 +12,18 @@ export {
   TRANSIENT_BACKOFF_MS,
 } from "./constants.js";
 export { advanceEnrollment } from "./advance.js";
-export { clampDailyCap, countSentOnLocalDay, effectiveDailyCap, rampCapForDay, rampDayNumber, underDailyCap } from "./caps.js";
+export { clampDailyCap, countSentOnLocalDay, rampCapForDay, underDailyCap } from "./caps.js";
 export { effectsForDelivery, type CycleEffect, type SmtpTransport, type StoredMessage } from "./effects.js";
 export { evaluateCandidate, skipDecision } from "./evaluate.js";
 export { enforcedGapMinutes, gapElapsed, latestSentAt, pickGapMinutes } from "./gap.js";
 export { formatSendLog, type SendLogFields } from "./log.js";
 export { planSendTick } from "./plan.js";
+export { candidate, mailbox, NOON } from "./fixture.js";
 export { applyRecipientEvent, classifyInbound, isAutoReply } from "./recipient-events.js";
 export { classifyDeliveryFailure, decideAfterFailure, failureReason, retryAt, type SendFailure } from "./retry.js";
 export { scheduleProblem } from "./schedule.js";
 export { emailDomain, isDeliverableAddress, isSuppressed, normalizeEmail } from "./suppression.js";
-export { addCalendarDays, isValidTimeZone, localYmd, parseYmd, zonedParts, zonedTimeToUtc } from "./time.js";
+export { addCalendarDays, localYmd, parseYmd, zonedParts, zonedTimeToUtc } from "./time.js";
 export type {
   CampaignStatus,
   ContactStatus,

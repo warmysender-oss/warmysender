@@ -9,6 +9,7 @@ import type { OutgoingEmail } from "../mail/send-message.js";
 export type SmtpTransport = {
   send: (
     email: OutgoingEmail,
+    mailboxId: string,
   ) => Promise<{ ok: true; messageId?: string } | { ok: false; failure: SendFailure }>;
 };
 
@@ -23,18 +24,22 @@ export type StoredMessage = {
   subject: string;
   inReplyTo: string | null;
   references: string | null;
-  status: "sent" | "failed" | "retrying" | "bounced";
+  /** Matches messages.status: pending while waiting to retry, failed for a hard failure or 5xx. */
+  status: "sent" | "failed" | "pending";
   error: string | null;
   attempt: number;
   retryAt: Date | null;
   sentAt: Date | null;
+  bodyText: string;
+  bodyHtml: string | null;
 };
 
 export type EnrollmentUpdate = {
-  status?: "active" | "stopped" | "completed" | "paused";
+  status?: "active" | "stopped" | "completed";
   stopReason?: string | null;
   stepNumber?: number;
   nextSendAt?: Date | null;
+  mailboxId?: string;
   attempts?: number;
   retryAt?: Date | null;
 };
@@ -116,6 +121,8 @@ export function effectsForDelivery(input: {
         attempt: input.decision.candidate.attempts + 1,
         retryAt: null,
         sentAt: input.now,
+        bodyText: email.text,
+        bodyHtml: email.html,
       },
     },
     {
@@ -136,6 +143,7 @@ export function effectsForDelivery(input: {
         status: "completed",
         stopReason: null,
         nextSendAt: null,
+        mailboxId: input.decision.mailboxId,
         attempts: 0,
         retryAt: null,
       },
@@ -147,6 +155,7 @@ export function effectsForDelivery(input: {
       update: {
         status: "stopped",
         stopReason: advanced.reason,
+        mailboxId: input.decision.mailboxId,
         attempts: 0,
         retryAt: null,
       },
@@ -159,6 +168,7 @@ export function effectsForDelivery(input: {
         status: "active",
         stepNumber: advanced.stepNumber,
         nextSendAt: advanced.nextSendAt,
+        mailboxId: input.decision.mailboxId,
         attempts: 0,
         retryAt: null,
         stopReason: null,
@@ -191,6 +201,8 @@ function failureEffects(input: {
     subject: input.email.subject,
     inReplyTo: input.email.inReplyTo,
     references: input.email.references,
+    bodyText: input.email.text,
+    bodyHtml: input.email.html,
   };
 
   if (decision.kind === "retry") {
@@ -210,7 +222,7 @@ function failureEffects(input: {
         type: "message",
         message: {
           ...baseMessage,
-          status: "retrying",
+          status: "pending",
           error: decision.reason,
           attempt: decision.attempts,
           retryAt: when,
@@ -222,6 +234,7 @@ function failureEffects(input: {
         enrollmentId: input.decision.enrollmentId,
         update: {
           status: "active",
+          mailboxId: input.decision.mailboxId,
           attempts: decision.attempts,
           retryAt: when,
         },
@@ -271,7 +284,7 @@ function failureEffects(input: {
         type: "message",
         message: {
           ...baseMessage,
-          status: "bounced",
+          status: "failed",
           error: "smtp_5xx",
           attempt: decision.attempts,
           retryAt: null,
@@ -289,7 +302,8 @@ function failureEffects(input: {
         enrollmentId: input.decision.enrollmentId,
         update: {
           status: "stopped",
-          stopReason: "bounced",
+          stopReason: "bounce",
+          mailboxId: input.decision.mailboxId,
           attempts: decision.attempts,
           retryAt: null,
         },
@@ -328,7 +342,8 @@ function failureEffects(input: {
       enrollmentId: input.decision.enrollmentId,
       update: {
         status: "stopped",
-        stopReason: decision.reason,
+        stopReason: "send_failed",
+        mailboxId: input.decision.mailboxId,
         attempts: decision.attempts,
         retryAt: null,
       },

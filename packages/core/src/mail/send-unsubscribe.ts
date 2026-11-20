@@ -1,5 +1,5 @@
-import { applyRecipientEvent } from "../../../../packages/core/src/scheduler/recipient-events.js";
-import type { ContactStatus } from "../../../../packages/core/src/scheduler/types.js";
+import { applyRecipientEvent } from "../scheduler/recipient-events.js";
+import type { ContactStatus } from "../scheduler/types.js";
 
 export type UnsubscribeContact = {
   contactId: string;
@@ -52,10 +52,10 @@ export function handleUnsubscribeRequest(input: {
         effect: null,
       };
     }
-    return finish(input.contact);
+    return finish(input.contact, "json");
   }
 
-  if (method === "GET") return finish(input.contact);
+  if (method === "GET") return finish(input.contact, "html");
 
   return {
     status: 405,
@@ -73,12 +73,12 @@ export function isOneClickPost(contentType: string | null, rawBody: string | nul
   return params.get("List-Unsubscribe") === "One-Click";
 }
 
-function finish(contact: UnsubscribeContact): UnsubscribeResponse {
+function finish(contact: UnsubscribeContact, format: "html" | "json"): UnsubscribeResponse {
   if (contact.status === "unsubscribed") {
     return {
       status: 200,
-      contentType: "text/html; charset=utf-8",
-      body: page("This address is already unsubscribed."),
+      contentType: format === "html" ? "text/html; charset=utf-8" : "application/json; charset=utf-8",
+      body: format === "html" ? page("This address is already unsubscribed.") : JSON.stringify({ ok: true }),
       effect: null,
     };
   }
@@ -88,17 +88,26 @@ function finish(contact: UnsubscribeContact): UnsubscribeResponse {
     email: contact.email,
     enrollments: [],
   });
+  const effect: UnsubscribeEffect = {
+    contactId: contact.contactId,
+    email: contact.email,
+    contactStatus: "unsubscribed",
+    suppressEmail: applied.suppressEmail ?? contact.email.trim().toLowerCase(),
+    sequenceStopped: true,
+  };
+  if (format === "json") {
+    return {
+      status: 200,
+      contentType: "application/json; charset=utf-8",
+      body: JSON.stringify({ ok: true }),
+      effect,
+    };
+  }
   return {
     status: 200,
     contentType: "text/html; charset=utf-8",
     body: page("You are unsubscribed. We will not email this address again."),
-    effect: {
-      contactId: contact.contactId,
-      email: contact.email,
-      contactStatus: "unsubscribed",
-      suppressEmail: applied.suppressEmail ?? contact.email.trim().toLowerCase(),
-      sequenceStopped: true,
-    },
+    effect,
   };
 }
 

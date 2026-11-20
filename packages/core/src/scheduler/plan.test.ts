@@ -98,7 +98,7 @@ describe("one send at a time and re-checks", () => {
       mailboxes: [
         mailbox({
           timezone: mailboxOverrides.timezone ?? "UTC",
-          sendingDays: mailboxOverrides.sendingDays ? [...mailboxOverrides.sendingDays] : [0, 1, 2, 3, 4, 5, 6],
+          sendingDays: mailboxOverrides.sendingDays ? [...mailboxOverrides.sendingDays] : [1, 2, 3, 4, 5, 6, 7],
           paused: mailboxOverrides.paused ?? false,
           sentAtTimes: Array.from({ length: sentCount }, () => sentAt),
           nextGapMinutes: mailboxOverrides.gapMinutes ?? null,
@@ -131,6 +131,40 @@ describe("one send at a time and re-checks", () => {
       inFlightMailboxIds: [],
     });
     expect(outside.skips[0]?.reason).toBe("outside_window");
+  });
+
+  it("rotates step 1 onto the mailbox with room under the cap", () => {
+    const plan = planSendTick({
+      now: NOON,
+      mailboxes: [
+        mailbox({ id: "mbx_b", sentAtTimes: Array.from({ length: 30 }, () => new Date("2026-01-15T11:00:00.000Z")) }),
+        mailbox({ id: "mbx_a" }),
+      ],
+      candidates: [candidate({ mailboxId: null, mailboxChoices: ["mbx_b", "mbx_a"] })],
+      suppressions: [],
+      inFlightMailboxIds: [],
+    });
+    expect(plan.sends.map((send) => send.mailboxId)).toEqual(["mbx_a"]);
+  });
+
+  it("sends on Sunday only when Sunday is a sending day", () => {
+    const sunday = new Date("2026-01-18T12:00:00.000Z");
+    const closed = planSendTick({
+      now: sunday,
+      mailboxes: [mailbox({ sendingDays: [1, 2, 3, 4, 5] })],
+      candidates: [candidate({ dueAt: sunday })],
+      suppressions: [],
+      inFlightMailboxIds: [],
+    });
+    expect(closed.skips[0]?.reason).toBe("not_sending_day");
+    const open = planSendTick({
+      now: sunday,
+      mailboxes: [mailbox({ sendingDays: [7] })],
+      candidates: [candidate({ dueAt: sunday })],
+      suppressions: [],
+      inFlightMailboxIds: [],
+    });
+    expect(open.sends).toHaveLength(1);
   });
 
   it("does not retry a step that failed without a scheduled time", () => {

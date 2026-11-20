@@ -41,8 +41,10 @@ export type SkipReason =
  */
 export type MailboxSnapshot = {
   id: string;
+  fromAddress: string;
+  fromName: string | null;
   timezone: string;
-  /** 0 = Sunday … 6 = Saturday, in the mailbox timezone. */
+  /** ISO weekdays, 1 = Monday … 7 = Sunday, in the mailbox timezone. */
   sendingDays: readonly number[];
   /**
    * Local HH:mm, 24-hour. Start is inclusive and end is exclusive.
@@ -85,7 +87,10 @@ export type SendCandidate = {
   contactId: string;
   contactEmail: string;
   contactStatus: ContactStatus;
-  mailboxId: string;
+  /** Null until step 1 is assigned. Follow-ups keep the step 1 mailbox. */
+  mailboxId: string | null;
+  /** Campaign mailboxes step 1 may rotate across. Ignored once mailboxId is set. */
+  mailboxChoices: readonly string[];
   stepId: string;
   stepNumber: number;
   dueAt: Date;

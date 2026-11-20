@@ -4,6 +4,13 @@ export {
   unsubscribeUrl,
 } from "./send-headers.js";
 export {
+  handleUnsubscribeRequest,
+  isOneClickPost,
+  type UnsubscribeContact,
+  type UnsubscribeEffect,
+  type UnsubscribeResponse,
+} from "./send-unsubscribe.js";
+export {
   buildOutgoingEmail,
   buildRawMessage,
   createMessageId,

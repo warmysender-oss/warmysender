@@ -15,6 +15,13 @@
       "when": 1795184729313,
       "tag": "0001_campaign_audience",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795184746314,
+      "tag": "0002_mailbox_next_gap",
+      "breakpoints": true
     }
   ]
 }

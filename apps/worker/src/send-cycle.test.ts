@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { candidate, mailbox, NOON } from "../../../packages/core/src/scheduler/fixture.js";
-import type { CycleEffect, MailboxSnapshot, SendCandidate } from "../../../packages/core/src/scheduler/index.js";
-import { AUTH_RETRY_DELAY_MS, PAUSE_REASON_AUTH } from "../../../packages/core/src/scheduler/constants.js";
+import {
+  AUTH_RETRY_DELAY_MS,
+  NOON,
+  PAUSE_REASON_AUTH,
+  candidate,
+  mailbox,
+  type CycleEffect,
+  type MailboxSnapshot,
+  type SendCandidate,
+  type SmtpTransport,
+} from "@warmysender/core";
 import { registerSendTick, runSendCycle, runSendJob, SEND_TICK_CRON } from "./send-cycle.js";
-import type { SmtpTransport } from "../../../packages/core/src/scheduler/effects.js";
 
 describe("send cycle", () => {
   it("records a sent message and schedules the next step", async () => {

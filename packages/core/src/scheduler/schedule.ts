@@ -10,7 +10,7 @@ export function scheduleProblem(mailbox: MailboxSnapshot): string | null {
   }
   if (!Array.isArray(mailbox.sendingDays)) return "sending_days";
   for (const day of mailbox.sendingDays) {
-    if (!Number.isInteger(day) || day < 0 || day > 6) return "sending_days";
+    if (!Number.isInteger(day) || day < 1 || day > 7) return "sending_days";
   }
   if (!Number.isInteger(mailbox.minGapMinutes) || !Number.isInteger(mailbox.maxGapMinutes)) {
     return "gap";

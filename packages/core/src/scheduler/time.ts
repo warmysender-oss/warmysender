@@ -5,7 +5,7 @@ export type ZonedParts = {
   hour: number;
   minute: number;
   second: number;
-  /** 0 = Sunday … 6 = Saturday. */
+  /** ISO weekday: 1 = Monday … 7 = Sunday. */
   weekday: number;
 };
 
@@ -18,8 +18,9 @@ export type LocalDateTime = {
   second: number;
 };
 
+/** ISO weekday: Monday = 1 … Sunday = 7. Matches mailboxes.sending_days. */
 const WEEKDAY_INDEX: Record<string, number> = {
-  Sun: 0,
+  Sun: 7,
   Mon: 1,
   Tue: 2,
   Wed: 3,

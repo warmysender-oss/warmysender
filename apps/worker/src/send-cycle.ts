@@ -1,14 +1,16 @@
-import { effectsForDelivery, planSendTick } from "../../../packages/core/src/scheduler/index.js";
-import type {
-  CycleEffect,
-  MailboxSnapshot,
-  PlanResult,
-  SendCandidate,
-  SmtpTransport,
-  SuppressionEntry,
-} from "../../../packages/core/src/scheduler/index.js";
-import { buildOutgoingEmail, createMessageId } from "../../../packages/core/src/mail/send.js";
-import { formatSendLog } from "../../../packages/core/src/scheduler/log.js";
+import {
+  buildOutgoingEmail,
+  createMessageId,
+  effectsForDelivery,
+  formatSendLog,
+  planSendTick,
+  type CycleEffect,
+  type MailboxSnapshot,
+  type PlanResult,
+  type SendCandidate,
+  type SmtpTransport,
+  type SuppressionEntry,
+} from "@warmysender/core";
 
 export type SendCycleInput = {
   now: Date;
@@ -47,10 +49,13 @@ export async function runSendCycle(input: SendCycleInput): Promise<SendCycleResu
   for (const decision of plan.sends) {
     const mailbox = mailboxes.get(decision.mailboxId);
     if (!mailbox) continue;
+    const fromAddress = mailbox.fromAddress || decision.candidate.fromAddress;
     const emailBuilt = buildOutgoingEmail({
       ...decision.candidate,
+      fromAddress,
+      fromName: mailbox.fromName ?? decision.candidate.fromName,
       toAddress: decision.candidate.contactEmail,
-      messageId: createMessageId(decision.candidate.fromAddress, newId()),
+      messageId: createMessageId(fromAddress, newId()),
     });
     if (!emailBuilt.ok) {
       effects.push({
@@ -66,7 +71,7 @@ export async function runSendCycle(input: SendCycleInput): Promise<SendCycleResu
     }
     let result: Awaited<ReturnType<SmtpTransport["send"]>>;
     try {
-      result = await input.transport.send(emailBuilt.email);
+      result = await input.transport.send(emailBuilt.email, decision.mailboxId);
     } catch (error) {
       const message = error instanceof Error ? error.message : "send threw";
       result = { ok: false, failure: { message, timedOut: true } };
@@ -103,7 +108,7 @@ export type SendRepository = {
   commit: (effects: CycleEffect[]) => Promise<void>;
 };
 
-/** Load, send, commit. The Drizzle adapter is wired when the Task 01 schema is on main. */
+/** Load, send, commit. Callers pass the Drizzle repository from `send-repository.ts`. */
 export async function runSendJob(
   repo: SendRepository,
   transport: SmtpTransport,
