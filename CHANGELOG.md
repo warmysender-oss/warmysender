@@ -4,14 +4,21 @@ All notable changes to this project are documented here. The format is based on 
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-20
+
+First public release: open-source cold email you can self-host, by WarmySender.
+
 ### Added
 
-- pnpm monorepo with `apps/server`, `apps/worker`, `apps/web`, and `packages/core`.
-- Drizzle schema and the first Postgres migration for the v1 data model.
-- Email and password accounts. The first account is an admin. Later people join with an invite link.
-- API keys, stored as a SHA-256 hash and shown once.
-- AES-256-GCM encryption helper and environment validation.
-- pg-boss worker with a heartbeat job.
-- Web shell with light and dark mode and sidebar placeholders.
-- Dockerfile, Docker Compose (app, worker, Postgres, optional Mailpit), and a documented `.env.example`.
-- CI, CodeQL, Dependabot, `AGENTS.md`, `CLAUDE.md`, and `SUPPORT.md`.
+- **Mailboxes:** any SMTP/IMAP host (Gmail and Google Workspace app passwords, Zoho, Hostinger, Fastmail, custom) and Microsoft 365 / Outlook through your own Entra app. Test connection with plain-language errors.
+- **Safe sending built into the code:** daily cap per mailbox (default 30, hard maximum 50), a ramp for new mailboxes (10 a day in week one, 20 in week two), sending days and hours per time zone, a random gap between sends, one send at a time per mailbox, and a pause after three sign-in failures in a row.
+- **Deliverability check:** SPF, DKIM, DMARC and MX for each sending domain, with the fix for each problem.
+- **Contacts:** CSV import with column mapping and duplicate detection, lists, and a suppression list for addresses and whole domains.
+- **Sequences:** multi-step campaigns with delays, `{{variables}}` with fallbacks, follow-ups in the same thread, a preview with a real contact, and a launch check that explains problems in words.
+- **Unsubscribe:** one-click `List-Unsubscribe` on every email; unsubscribes and bounces are suppressed automatically.
+- **Inbox:** replies from every mailbox in one place. A real reply stops the sequence; auto-replies are labelled and do not. Reply from the thread.
+- **Stats:** sent, replies, reply rate, bounces and unsubscribes per campaign, step and mailbox.
+- **AI agents:** REST API and an MCP server for Claude, ChatGPT, Cursor, Codex, OpenClaw and Hermes Agent, plus agent skills. Agents can build and start campaigns but can never send directly or raise a limit.
+- **WarmySender connect (optional):** email verification and mailbox warmup through a WarmySender API key.
+- **Self-hosting:** `docker compose up`, a `doctor` command that checks your setup, docs for Docker, Coolify, Dokploy, Portainer and Railway.
+
