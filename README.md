@@ -109,6 +109,19 @@ Limits are code. An agent cannot raise them.
 | Instagram | — | Yes |
 | Managed hosting | — | Yes |
 
+## WarmySender open source vs hosted cold email tools
+
+Instantly, lemlist, and Smartlead are closed-source hosted services. This repository is self-hosted cold email under the GNU AGPL-3.0. The hosted column is Closed source or Hosted only.
+
+| | WarmySender (open source) | Instantly, lemlist, Smartlead (hosted) |
+| --- | --- | --- |
+| Source code open | Yes. This repository. | Closed source |
+| Self-host on your own server | Yes. `docker compose up` runs the app, the worker, and PostgreSQL 16 on a machine you control. | Hosted only |
+| Licence | [GNU AGPL-3.0](LICENSE) | Closed source |
+| Your data stays on your server | Yes for the app you run. Accounts, contacts, messages, and mailbox secrets stay in your Postgres database. Secrets are encrypted at rest. Connecting warmup sends that mailbox login to your WarmySender account. | Hosted only |
+| AI agents over MCP with safe limits | Yes. Claude, ChatGPT, Cursor, Codex, OpenClaw, and Hermes Agent. Tools create and start campaigns. The scheduler sends. A tool cannot raise a limit or send a message. | Hosted only |
+| Warmup network | No warmup network in this app. Warmup is a WarmySender Cloud feature you connect with a key. | Hosted only |
+
 ## Costs
 
 Self-hosting costs your server and your mailboxes. WarmySender features (warmup, verification, leads, LinkedIn) cost your WarmySender plan. New accounts get Pro at $9/month with the sign-up offer → https://warmysender.com
@@ -121,6 +134,50 @@ Self-hosting costs your server and your mailboxes. WarmySender features (warmup,
 - [Microsoft 365 / Outlook app](docs/MICROSOFT-APP.md)
 - [Connect an agent](docs/agents.md)
 - [Cutting a release](docs/RELEASING.md)
+- [Documentation index](docs/README.md)
+- [FAQ](docs/faq.md)
+
+## FAQ
+
+### Is there a free open-source alternative to Instantly?
+
+Yes. This repository is open-source cold email you self-host, under the GNU AGPL-3.0, with no licence fee. Instantly is a closed-source hosted service. You run the sequences, inbox, REST API, and MCP server on your own machine. Warmup, verification, leads, and LinkedIn stay on the hosted WarmySender plan linked above.
+
+### Can I self-host cold email software?
+
+Yes. WarmySender is self-hosted cold email. `docker compose up` starts the app, the worker, and PostgreSQL 16, and http://localhost:3000 is the UI. The first account is the admin. Docker, Coolify, Dokploy, Portainer, and Railway are documented in [docs/self-hosting](docs/self-hosting/README.md).
+
+### What do I need to run it?
+
+Docker with Compose v2 is the supported install, and a source checkout uses Node 22, pnpm, and PostgreSQL 16. You bring your own mailboxes. Before you expose the server, set `ENCRYPTION_KEY` and `SESSION_SECRET` the way `.env.example` describes. `NODE_ENV=production` refuses the development defaults published in the Compose file.
+
+### Does it work with Gmail and Outlook?
+
+Yes. Gmail and Google Workspace connect over SMTP and IMAP with an app password, and the same form has presets for Zoho, Hostinger, Fastmail, and a custom host. Microsoft 365 and Outlook use an Entra app you register for your own server. The steps are in [docs/MICROSOFT-APP.md](docs/MICROSOFT-APP.md).
+
+### How does it keep my mailboxes safe?
+
+The limits are code, and an agent cannot raise them. Each mailbox sends at most its daily cap (default 30, hard maximum 50), and a new mailbox ramps at 10 a day on days 1–7 and 20 a day on days 8–14. Sends stay inside that mailbox's window and time zone, one at a time, after a random gap (default 4–9 minutes). A real reply stops that contact's sequences, a bounce suppresses the contact, and three sign-in failures in a row pause the mailbox.
+
+### Can AI agents like Claude or ChatGPT run my campaigns?
+
+Yes. Claude, ChatGPT, Cursor, Codex, OpenClaw, and Hermes Agent connect over MCP at `/mcp` with an API key, and the same actions are on the REST API. Those tools create and start campaigns. The scheduler sends, inside the caps, window, gap, and ramp, and a reply tool saves a draft a person sends from the inbox. Snippets for all six are in [docs/agents.md](docs/agents.md).
+
+### Does it do email warmup?
+
+Warmup is a WarmySender Cloud feature you can connect with a key. This app does not run a warmup network, and sequences, the inbox, and the scheduler work with no key. For an SMTP or IMAP mailbox, Settings asks you to confirm before the mailbox login is sent to your WarmySender account. Microsoft mailboxes are warmed by signing in inside WarmySender.
+
+### Is it really free?
+
+The software is free to run, and there is no licence fee for this repository. Self-hosting costs your server and your mailboxes. Warmup, email verification, leads, and LinkedIn use a WarmySender plan. New accounts get Pro at $9/month with the sign-up offer at https://warmysender.com.
+
+### What licence is it?
+
+GNU Affero General Public License v3.0. You can run, study, and change the code. If you run a modified version as a network service, the AGPL requires you to offer the corresponding source to users of that service. The text is in [LICENSE](LICENSE).
+
+### How is it different from Instantly, lemlist or Smartlead?
+
+You self-host this program, the source is AGPL-3.0, and the database stays on your server. Instantly, lemlist, and Smartlead are closed-source hosted services. People looking for a lemlist alternative or a Smartlead alternative get the same deal as the Instantly alternative in the first line: your server, your mailboxes, and MCP for Claude, ChatGPT, Cursor, Codex, OpenClaw, and Hermes Agent, with the limits above. Their features and prices are outside this page.
 
 ## Contributing
 
