@@ -41,16 +41,17 @@ export const MAX_SEND_ATTEMPTS = 3;
  */
 export const TRANSIENT_BACKOFF_MS = [5 * 60 * 1000, 15 * 60 * 1000] as const;
 
-/** Spec §3.2: auth failure on send 3 times in a row pauses the mailbox. */
-export const AUTH_FAILURES_BEFORE_PAUSE = 3;
+/**
+ * Spec §3.2: auth failure on send 3 times in a row pauses the mailbox.
+ * The mailbox module owns the count and the Reconnect text so SMTP test
+ * failures and send failures pause for the same reason.
+ */
+export { AUTH_FAILURES_BEFORE_PAUSE, RECONNECT_MESSAGE as PAUSE_REASON_AUTH } from "../mail/auth-health.js";
 
 /**
  * Wait after an auth failure so a bad password is not retried every minute.
  * Spec §3.2: never retry a failing login in a tight loop.
  */
 export const AUTH_RETRY_DELAY_MS = 30 * 60 * 1000;
-
-export const PAUSE_REASON_AUTH =
-  "Reconnect: the mailbox login failed three times in a row.";
 
 export const LIST_UNSUBSCRIBE_POST = "List-Unsubscribe=One-Click";
