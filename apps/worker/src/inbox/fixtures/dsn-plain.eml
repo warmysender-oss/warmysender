@@ -1,0 +1,24 @@
+From: Mail Delivery System <mailer-daemon@mx.harbor-dental.test>
+To: alex@harbor-dental.test
+Subject: Undelivered Mail Returned to Sender
+Auto-Submitted: auto-replied
+Content-Type: text/plain; charset=UTF-8
+Message-ID: <dsn-plain@mx.harbor-dental.test>
+Date: Fri, 20 Nov 2026 12:05:00 +0000
+
+This is the mail system at host mx.harbor-dental.test.
+
+I'm sorry to have to inform you that your message could not
+be delivered to one or more recipients.
+
+<jane@river-clinic.test>: host mx.river-clinic.test said: 550 5.1.1
+    Recipient address rejected: User unknown
+
+--- Below this line is a copy of the message.
+
+From: Alex <alex@harbor-dental.test>
+To: jane@river-clinic.test
+Subject: Intro
+Message-ID: <campaign-step1@harbor-dental.test>
+
+Hello

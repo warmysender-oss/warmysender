@@ -1,5 +1,7 @@
 import { PgBoss } from "pg-boss";
 import { createDb, loadConfig, runMigrations, writeHeartbeat } from "@warmysender/core";
+import { INBOX_POLL_JOB } from "./inbox/index.js";
+import { runInboxPoll } from "./inbox/run.js";
 
 export const HEARTBEAT_QUEUE = "heartbeat";
 
@@ -24,6 +26,12 @@ async function main(): Promise<void> {
   });
   await boss.schedule(HEARTBEAT_QUEUE, "* * * * *");
   await boss.send(HEARTBEAT_QUEUE, {});
+  await boss.createQueue(INBOX_POLL_JOB);
+  await boss.work(INBOX_POLL_JOB, async () => {
+    await runInboxPoll(db, config.encryptionKey);
+  });
+  await boss.schedule(INBOX_POLL_JOB, "*/5 * * * *");
+  await boss.send(INBOX_POLL_JOB, {});
   console.log("[worker] started");
 
   const shutdown = (signal: string) => {

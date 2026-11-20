@@ -38,7 +38,11 @@ body:
     attributes:
       label: How are you running it?
       options:
-        - Docker
+        - Docker Compose
+        - Coolify
+        - Dokploy
+        - Portainer
+        - Railway
         - From source
         - Other
   - type: textarea
