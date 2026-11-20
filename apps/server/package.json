@@ -14,13 +14,14 @@
     "cookie": "^2.0.2",
     "drizzle-orm": "0.45.4",
     "express": "^5.1.0",
-    "nodemailer": "^7.0.13"
+    "imapflow": "^2.12.2",
+    "nodemailer": "^10.6.1"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.17",
     "@types/express": "^5.0.6",
+    "@types/nodemailer": "^8.0.2",
     "@types/node": "^22.19.15",
-    "@types/nodemailer": "^7.0.12",
     "@types/supertest": "^7.2.1",
     "supertest": "^7.1.4",
     "tsx": "^4.20.6",

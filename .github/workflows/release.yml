@@ -1,0 +1,59 @@
+# GitHub Release for a vMAJOR.MINOR.PATCH tag.
+# Notes are the matching CHANGELOG.md section. See docs/RELEASING.md.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Read changelog notes
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [[ ! -f CHANGELOG.md ]]; then
+            echo "CHANGELOG.md is missing. Add a section for ${TAG} before tagging." >&2
+            exit 1
+          fi
+          version="${TAG#v}"
+          # Escape regex metacharacters so 1.2.3 matches only that version.
+          ver_re=$(printf '%s' "$version" | sed 's/[.[\*^$()+?{|\\]/\\&/g')
+          tag_re=$(printf '%s' "$TAG" | sed 's/[.[\*^$()+?{|\\]/\\&/g')
+          awk -v ver="$ver_re" -v tag="$tag_re" '
+            function heading_matches(line) {
+              if (line ~ "^## \\[" ver "\\]") return 1
+              if (line ~ "^## \\[" tag "\\]") return 1
+              if (line ~ "^## " ver "([^0-9]|$)") return 1
+              if (tag != ver && line ~ "^## " tag "([^0-9]|$)") return 1
+              return 0
+            }
+            heading_matches($0) { found = 1; print; next }
+            found && /^## / { exit }
+            found {
+              print
+              if ($0 ~ /[^[:space:]]/) body = 1
+            }
+            END { if (!found || !body) exit 2 }
+          ' CHANGELOG.md > release-notes.md || {
+            echo "CHANGELOG.md has no notes for ${TAG}." >&2
+            echo "Add a ## [${version}] section (or ## [${TAG}], ## ${version}, ## ${TAG}) with notes before the next ## heading." >&2
+            exit 1
+          }
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: gh release create "$TAG" --title "$TAG" --notes-file release-notes.md

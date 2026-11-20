@@ -5,6 +5,7 @@ import type { Config, AppDatabase } from "@warmysender/core";
 import { HttpError } from "./http.js";
 import { attachUser } from "./middleware.js";
 import { inboxRouter } from "./inbox/routes.js";
+import { mailRouter, type MailRouterOptions } from "./mailboxes/router.js";
 import { apiKeysRouter } from "./routes/api-keys.js";
 import { authRouter } from "./routes/auth.js";
 import { invitesRouter } from "./routes/invites.js";
@@ -19,6 +20,7 @@ export type CreateAppOptions = {
   webDist: string;
   /** Tests pass a fake sender. Production uses SMTP from the mailbox that owns the thread. */
   replyTransport?: ReplyTransport;
+  mail?: MailRouterOptions;
 };
 
 function findHttpError(error: unknown): HttpError | null {
@@ -45,6 +47,7 @@ export function createApp(options: CreateAppOptions): Express {
   app.use("/api/inbox", inboxRouter(db, config, options.replyTransport));
   app.use("/api/stats", statsRouter(db));
   app.use("/api/setup", setupRouter(db));
+  app.use(mailRouter(db, config, options.mail));
 
   if (options.serveWeb && existsSync(options.webDist)) {
     app.use(express.static(options.webDist));
