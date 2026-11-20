@@ -1,4 +1,5 @@
-import { effectiveDailyCap, localIsoDate, rampDayNumber, rampLabel, rampPhase } from "./ramp.js";
+import { effectiveDailyCap } from "@warmysender/core";
+import { localIsoDate, rampPhase } from "./ramp.js";
 
 /**
  * Stats math for spec §3.7.
@@ -163,19 +164,22 @@ export function countSentOnLocalDay(
 }
 
 export function mailboxDayStats(input: MailboxDayInput): MailboxDayStats {
-  const rampDay = rampDayNumber(input.rampStartedOn, input.today);
-  const cap = effectiveDailyCap(input.configuredCap, rampDay);
+  const ramp = effectiveDailyCap({
+    configuredCap: input.configuredCap,
+    rampStartedOn: input.rampStartedOn,
+    today: input.today,
+  });
   return {
     mailboxId: input.mailboxId,
     email: input.email,
     sentToday: input.sentToday,
     configuredCap: input.configuredCap,
-    effectiveCap: cap,
-    remaining: Math.max(0, cap - input.sentToday),
-    rampDay,
-    rampPhase: rampPhase(rampDay),
-    rampLabel: rampLabel(rampDay, cap),
-    overCap: input.sentToday > cap,
+    effectiveCap: ramp.cap,
+    remaining: Math.max(0, ramp.cap - input.sentToday),
+    rampDay: ramp.rampDay,
+    rampPhase: rampPhase(ramp.rampDay),
+    rampLabel: ramp.label,
+    overCap: input.sentToday > ramp.cap,
     health: input.health,
     paused: input.paused,
   };
