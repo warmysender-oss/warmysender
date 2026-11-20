@@ -6,8 +6,6 @@
 
 Open-source cold email you can self-host. The open-source Instantly alternative.
 
-Don't want to run a server? WarmySender hosts it and adds warmup, verification, leads and LinkedIn. New accounts get Pro at $9/month with the sign-up offer.
-
 **Hosted version: WarmySender — adds warmup, email verification, leads and LinkedIn. New accounts get Pro at $9/month with the sign-up offer → https://warmysender.com**
 
 [![License: AGPL-3.0](https://img.shields.io/github/license/warmysender-oss/warmysender)](LICENSE)
@@ -36,7 +34,7 @@ Seeded demo data uses `.test` domains only.
 - Stats per campaign, step, and mailbox.
 - REST API (`/api/v1`) and MCP (`/mcp`) for Claude, ChatGPT, Cursor, Codex, OpenClaw, Hermes Agent, and any other MCP client.
 - Optional WarmySender connect for list verification, mailbox warmup, and a leads-search link. The core app runs with no WarmySender key.
-- A DNS deliverability check (SPF, DKIM, DMARC, MX) on each mailbox, and `pnpm doctor` / `docker compose run app doctor` (the mailbox milestone adds the `doctor` command).
+- A DNS deliverability check (SPF, DKIM, DMARC, MX) on each mailbox, and `pnpm doctor` / `docker compose run app doctor`.
 
 ## Works with your AI agent
 
@@ -98,22 +96,18 @@ Limits are code. An agent cannot raise them.
 
 ## Open source vs WarmySender Cloud
 
-The build spec assigns the rows below. A blank cell means that line does not assign the row to that column.
-
 | | Open source (self-host) | WarmySender Cloud |
 | --- | --- | --- |
-| Cold email sequences | Yes | |
-| Inbox | Yes | |
-| API | Yes | |
-| MCP | Yes | |
-| Warmup network | | Yes |
-| Email verification | | Yes |
-| Leads database | | Yes |
-| LinkedIn | | Yes |
-| Instagram | | Yes |
-| Managed hosting | | Yes |
-
-Hosted version: WarmySender — adds warmup, email verification, leads and LinkedIn. New accounts get Pro at $9/month with the sign-up offer → https://warmysender.com
+| Cold email sequences | Yes | Yes |
+| Unified inbox | Yes | Yes |
+| REST API | Yes | Yes |
+| MCP for AI agents | Yes | Yes |
+| Warmup network | — | Yes |
+| Email verification | Connect a WarmySender key | Yes |
+| Leads database | Connect a WarmySender key | Yes |
+| LinkedIn | — | Yes |
+| Instagram | — | Yes |
+| Managed hosting | — | Yes |
 
 ## Costs
 
