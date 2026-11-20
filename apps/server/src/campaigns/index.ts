@@ -1,6 +1,7 @@
 export { createMemoryCampaignStore } from "./memory-store.js";
 export {
   addStep,
+  appendCampaignAudience,
   checkLaunch,
   createCampaign,
   deleteCampaign,

@@ -1,5 +1,14 @@
 import { parseCsv, suggestColumnMapping } from "./csv.js";
-import { importContacts, prepareMapping, toContactRecord, type ImportReport } from "./import-contacts.js";
+import { normalizeEmail } from "./email.js";
+import {
+  decideContact,
+  importContacts,
+  prepareMapping,
+  toContactRecord,
+  type ImportReport,
+  type ImportSkipReason,
+  type ParsedContact,
+} from "./import-contacts.js";
 import { cleanListName, membershipsToAdd } from "./lists.js";
 import { normalizeSuppression, sameSuppression, suppressionForStatus } from "./suppression.js";
 import type {
@@ -89,6 +98,74 @@ export async function importCsv(
     await store.insertMemberships(membershipsToAdd(memberships, input.listIds, contactIds));
   }
   return { ...report, contactIds };
+}
+
+export type ContactWriteInput = {
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  company?: string | null;
+  title?: string | null;
+  customFields?: Record<string, string>;
+};
+
+export type ContactWriteResult = {
+  created: ContactRecord[];
+  skipped: { email: string; reason: ImportSkipReason }[];
+};
+
+/** Creates contacts with the same dedupe and suppression rules as CSV import. */
+export async function createContacts(
+  store: ContactStore,
+  clock: ContactClock,
+  inputs: ContactWriteInput[],
+): Promise<ContactWriteResult> {
+  const [existing, suppressions] = await Promise.all([store.listContacts(), store.listSuppressions()]);
+  const known = new Set<string>();
+  for (const contact of existing) {
+    const email = normalizeEmail(contact.email);
+    if (email) known.add(email);
+  }
+  const seen = new Set<string>();
+  const skipped: ContactWriteResult["skipped"] = [];
+  const accepted: ParsedContact[] = [];
+  for (const input of inputs) {
+    const parsed = parseWrite(input);
+    const decision = decideContact({
+      email: parsed?.email ?? null,
+      existing: known,
+      seen,
+      suppressions,
+    });
+    if (decision !== "import" || !parsed) {
+      skipped.push({ email: input.email, reason: decision === "import" ? "invalid_syntax" : decision });
+      continue;
+    }
+    seen.add(parsed.email);
+    accepted.push(parsed);
+  }
+  const created = accepted.map((contact) => toContactRecord(clock.id(), contact));
+  if (created.length > 0) await store.insertContacts(created);
+  return { created, skipped };
+}
+
+/** Adds contacts to one list. Unknown contact ids are ignored. Membership writes go through `membershipsToAdd`. */
+export async function addContactsToList(
+  store: ContactStore,
+  listId: string,
+  contactIds: string[],
+): Promise<{ added: number }> {
+  const [lists, contacts, memberships] = await Promise.all([
+    store.listLists(),
+    store.listContacts(),
+    store.listMemberships(),
+  ]);
+  if (!lists.some((list) => list.id === listId)) throw new UserInputError("List not found.");
+  const known = new Set(contacts.map((contact) => contact.id));
+  const ids = [...new Set(contactIds)].filter((id) => known.has(id));
+  const created = membershipsToAdd(memberships, [listId], ids);
+  if (created.length > 0) await store.insertMemberships(created);
+  return { added: created.length };
 }
 
 export async function setContactStatus(
@@ -190,6 +267,29 @@ export async function removeSuppression(store: ContactStore, id: string): Promis
   const existing = await store.listSuppressions();
   if (!existing.some((row) => row.id === id)) throw new UserInputError("Suppression not found.");
   await store.deleteSuppression(id);
+}
+
+function parseWrite(input: ContactWriteInput): ParsedContact | null {
+  const email = normalizeEmail(input.email);
+  if (!email) return null;
+  const customFields: Record<string, string> = {};
+  for (const [key, value] of Object.entries(input.customFields ?? {})) {
+    if (value.trim().length > 0) customFields[key] = value;
+  }
+  return {
+    email,
+    firstName: blankToNull(input.firstName),
+    lastName: blankToNull(input.lastName),
+    company: blankToNull(input.company),
+    title: blankToNull(input.title),
+    customFields,
+  };
+}
+
+function blankToNull(value: string | null | undefined): string | null {
+  if (value == null) return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 function readTable(csv: string): string[][] {

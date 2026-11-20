@@ -5,6 +5,7 @@ import {
   cleanContentType,
   cleanDelay,
   cleanStepBody,
+  enrollableContacts,
   launchCheck,
   planPause,
   planStart,
@@ -195,6 +196,51 @@ export async function setCampaignAudience(
   const next = { ...campaign, contactIds, listIds };
   await deps.campaigns.updateCampaign(next);
   return { ...next, steps: await orderedSteps(deps, campaignId) };
+}
+
+/**
+ * Adds contacts and lists to the draft audience. Enrollment rows are created later by `startCampaign`.
+ * The count is how many of the newly covered contacts are active and not suppressed.
+ */
+export async function appendCampaignAudience(
+  deps: CampaignDeps,
+  campaignId: string,
+  input: { contactIds?: string[]; listIds?: string[] },
+): Promise<{ enrolled: number }> {
+  const campaign = await requireCampaign(deps, campaignId);
+  const listIds = uniqueIds(input.listIds ?? []);
+  const [contacts, lists, memberships, suppressions, enrollments] = await Promise.all([
+    deps.contacts.listContacts(),
+    deps.contacts.listLists(),
+    deps.contacts.listMemberships(),
+    deps.contacts.listSuppressions(),
+    deps.campaigns.listEnrollments(campaignId),
+  ]);
+  const knownLists = new Set(lists.map((list) => list.id));
+  for (const listId of listIds) {
+    if (!knownLists.has(listId)) throw new UserInputError("List not found.");
+  }
+  const knownContacts = new Set(contacts.map((contact) => contact.id));
+  const contactIds = uniqueIds(input.contactIds ?? []).filter((id) => knownContacts.has(id));
+  const newContactIds = contactIds.filter((id) => !campaign.contactIds.includes(id));
+  const newListIds = listIds.filter((id) => !campaign.listIds.includes(id));
+  const alreadyCovered = new Set<string>([
+    ...campaign.contactIds,
+    ...contactIdsInLists(memberships, campaign.listIds),
+    ...enrollments.map((row) => row.contactId),
+  ]);
+  const candidateIds = new Set<string>([...newContactIds, ...contactIdsInLists(memberships, newListIds)]);
+  const fresh = contacts
+    .filter((contact) => candidateIds.has(contact.id) && !alreadyCovered.has(contact.id))
+    .map((contact) => toLaunchContact(contact, suppressions));
+  const enrolled = enrollableContacts(fresh, []).length;
+  if (newContactIds.length > 0 || newListIds.length > 0) {
+    await setCampaignAudience(deps, campaignId, {
+      contactIds: uniqueIds([...campaign.contactIds, ...contactIds]),
+      listIds: uniqueIds([...campaign.listIds, ...listIds]),
+    });
+  }
+  return { enrolled };
 }
 
 export async function checkLaunch(deps: CampaignDeps, campaignId: string): Promise<LaunchIssue[]> {

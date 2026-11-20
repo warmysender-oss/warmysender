@@ -65,6 +65,19 @@ export function prepareMapping(mapping: ColumnMapping): { ok: true } | { ok: fal
   return { ok: true };
 }
 
+/** Same accept/skip decision CSV import and the API bulk writer both use. */
+export function decideContact(input: {
+  email: string | null;
+  existing: Set<string>;
+  seen: Set<string>;
+  suppressions: SuppressionEntry[];
+}): "import" | ImportSkipReason {
+  if (!input.email) return "invalid_syntax";
+  if (isSuppressed(input.email, input.suppressions)) return "suppressed";
+  if (input.existing.has(input.email) || input.seen.has(input.email)) return "duplicate";
+  return "import";
+}
+
 export function importContacts(input: {
   rows: string[][];
   mapping: ColumnMapping;
@@ -85,29 +98,25 @@ export function importContacts(input: {
     if (isBlankRow(row)) return;
     const rowNumber = input.firstDataRowNumber + offset;
     const contact = applyMapping(row, input.mapping);
-    if (!contact) {
+    const decision = decideContact({
+      email: contact?.email ?? null,
+      existing,
+      seen,
+      suppressions: input.suppressions,
+    });
+    if (decision === "invalid_syntax" || !contact) {
       counts.invalidSyntax += 1;
       results.push({ row: rowNumber, outcome: "skipped", reason: "invalid_syntax" });
       return;
     }
-    if (isSuppressed(contact.email, input.suppressions)) {
+    if (decision === "suppressed") {
       counts.suppressed += 1;
-      results.push({
-        row: rowNumber,
-        outcome: "skipped",
-        reason: "suppressed",
-        email: contact.email,
-      });
+      results.push({ row: rowNumber, outcome: "skipped", reason: "suppressed", email: contact.email });
       return;
     }
-    if (existing.has(contact.email) || seen.has(contact.email)) {
+    if (decision === "duplicate") {
       counts.duplicate += 1;
-      results.push({
-        row: rowNumber,
-        outcome: "skipped",
-        reason: "duplicate",
-        email: contact.email,
-      });
+      results.push({ row: rowNumber, outcome: "skipped", reason: "duplicate", email: contact.email });
       return;
     }
     seen.add(contact.email);
