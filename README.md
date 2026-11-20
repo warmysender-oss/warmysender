@@ -16,7 +16,7 @@ Open-source cold email you can self-host. The open-source Instantly alternative.
 
 ## Demo
 
-<!-- DEMO GIF -->
+![WarmySender open-source cold email: dashboard, sequences, contacts, mailboxes and inbox in light and dark mode](docs/assets/demo.gif)
 
 Seeded demo data uses `.test` domains only.
 

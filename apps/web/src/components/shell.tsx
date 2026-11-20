@@ -77,7 +77,7 @@ export function Shell() {
         </div>
       ) : null}
       <div className="flex min-h-screen flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background px-4">
           <Button className="md:hidden" variant="ghost" size="sm" onClick={() => setOpen((value) => !value)} aria-label="Open menu">
             {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </Button>
