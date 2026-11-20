@@ -4,6 +4,7 @@ import express, { type ErrorRequestHandler, type Express } from "express";
 import type { Config, AppDatabase } from "@warmysender/core";
 import { HttpError } from "./http.js";
 import { attachUser } from "./middleware.js";
+import { mailRouter, type MailRouterOptions } from "./mailboxes/router.js";
 import { apiKeysRouter } from "./routes/api-keys.js";
 import { authRouter } from "./routes/auth.js";
 import { invitesRouter } from "./routes/invites.js";
@@ -14,6 +15,7 @@ export type CreateAppOptions = {
   config: Config;
   serveWeb: boolean;
   webDist: string;
+  mail?: MailRouterOptions;
 };
 
 function findHttpError(error: unknown): HttpError | null {
@@ -37,6 +39,7 @@ export function createApp(options: CreateAppOptions): Express {
   app.use("/api/auth", authRouter(db, config));
   app.use("/api/invites", invitesRouter(db, config));
   app.use("/api/api-keys", apiKeysRouter(db));
+  app.use(mailRouter(db, config, options.mail));
 
   if (options.serveWeb && existsSync(options.webDist)) {
     app.use(express.static(options.webDist));

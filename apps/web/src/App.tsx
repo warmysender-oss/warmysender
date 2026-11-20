@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { Shell } from "@/components/shell";
 import { useAuth } from "@/lib/auth";
 import { DashboardPage } from "@/pages/dashboard";
+import { MailboxesRoute } from "@/pages/mailboxes/MailboxesRoute";
 import { LoginPage } from "@/pages/login";
 import { PlaceholderPage } from "@/pages/placeholder";
 import { RegisterPage } from "@/pages/register";
@@ -24,7 +25,7 @@ export function App() {
       <Route path="/invite/:token" element={<RegisterPage />} />
       <Route element={<RequireAuth />}>
         <Route path="/" element={<DashboardPage />} />
-        <Route path="/mailboxes" element={<PlaceholderPage title="Mailboxes" body="Connect SMTP, IMAP, or Microsoft 365 mailboxes in the next milestone. Secrets will be encrypted at rest." />} />
+        <Route path="/mailboxes" element={<MailboxesRoute />} />
         <Route path="/contacts" element={<PlaceholderPage title="Contacts" body="CSV import, lists, and the suppression list land in a later milestone." />} />
         <Route path="/campaigns" element={<PlaceholderPage title="Campaigns" body="Sequence steps, preview, and the launch check are not built yet." />} />
         <Route path="/inbox" element={<PlaceholderPage title="Inbox" body="Replies, auto-replies, and bounces will show up here after the inbox milestone." />} />

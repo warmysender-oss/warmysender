@@ -1,52 +1,77 @@
-# Microsoft 365 / Outlook app
+# Microsoft sign-in for a self-hosted WarmySender
 
-This is the stub for the self-hoster's own Entra app. Mailbox connect, XOAUTH2, and the in-app button are the mailbox task. The button points here when `MS_CLIENT_ID` and `MS_CLIENT_SECRET` are unset.
+WarmySender does not ship a Microsoft app. Each installation uses an app registration in the Microsoft Entra tenant of the person running the server. Mailbox refresh tokens stay on that server, encrypted at rest. They are not sent to WarmySender.
 
-The app signs the mailbox user in with that Entra app and stores the refresh token encrypted. You create the app in your own tenant. The Entra client id belongs to the self-hoster.
+The redirect URL and scopes below are the ones the app sends. They have to match exactly.
 
-## Values the server reads
+- Redirect URL: `${PUBLIC_URL}/api/oauth/microsoft/callback`
+- Example, when `PUBLIC_URL` is `https://mail.example.com`: `https://mail.example.com/api/oauth/microsoft/callback`
+- Example, for a laptop: `http://localhost:3000/api/oauth/microsoft/callback`
+- Scopes: `offline_access https://outlook.office.com/SMTP.Send https://outlook.office.com/IMAP.AccessAsUser.All openid email`
 
-| Variable | Value |
-| --- | --- |
-| `MS_CLIENT_ID` | Application (client) ID from the app registration |
-| `MS_CLIENT_SECRET` | A client secret from that registration |
-| `MS_TENANT` | Directory. Leave it unset to use `common` |
+## 1. Register the app
 
-## Redirect URL
+1. Open the [Microsoft Entra admin center](https://entra.microsoft.com) and sign in.
+2. Go to **Identity → Applications → App registrations** and choose **New registration**. Microsoft documents this screen in [Register an application](https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app).
+3. Name the app. `WarmySender` is fine.
+4. Supported account types:
+   - Choose **Accounts in any organizational directory and personal Microsoft accounts** when `MS_TENANT` is `common` (the default).
+   - Choose **Accounts in this organizational directory only** when only one tenant will connect, and set `MS_TENANT` to that tenant id.
+5. Under **Redirect URI**, choose platform **Web** and paste the redirect URL from the top of this page. It must match `PUBLIC_URL` character for character, including `http` versus `https` and any port.
+6. Choose **Register**.
+7. On the overview page, copy **Application (client) ID** into `MS_CLIENT_ID`.
 
-Register a **Web** redirect URI that matches this string, with your real `PUBLIC_URL` substituted:
+## 2. Create a client secret
 
-```text
-${PUBLIC_URL}/api/oauth/microsoft/callback
+1. Open **Certificates & secrets → Client secrets → New client secret**.
+2. Copy the **Value** immediately into `MS_CLIENT_SECRET`. The portal hides it later. Do not commit it and do not put it in a screenshot.
+3. Secrets expire. When it expires, create a new one and restart the app. Existing refresh tokens keep working until Microsoft revokes them.
+
+## 3. Add the Exchange and sign-in permissions
+
+These are delegated permissions. A person signs in as themselves. Do not add the application permissions `SMTP.SendAsApp` or `IMAP.AccessAsApp`.
+
+1. Open **API permissions → Add a permission**.
+2. Open **APIs my organization uses**, search for **Office 365 Exchange Online**, and choose **Delegated permissions**.
+3. Add `SMTP.Send` and `IMAP.AccessAsUser.All`.
+4. Add a permission again, choose **Microsoft Graph → Delegated permissions**, and add `openid`, `email`, and `offline_access`.
+5. If the tenant requires admin consent, choose **Grant admin consent**.
+
+Microsoft's protocol note for these scopes is [Authenticate an IMAP, POP or SMTP connection using OAuth](https://learn.microsoft.com/en-us/exchange/client-developer/legacy-protocols/how-to-authenticate-an-imap-pop-smtp-application-by-using-oauth). The authorization URL this app uses is `https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize` and the token URL is `https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token`.
+
+## 4. Let the mailbox use SMTP and IMAP
+
+Microsoft 365 mailboxes often have SMTP AUTH turned off.
+
+1. Turn on **Authenticated SMTP** and **IMAP** for the mailbox in the Microsoft 365 admin center (user → Mail → Manage email apps).
+2. If the tenant blocks SMTP AUTH, an admin has to allow it. Microsoft's steps are in [Enable SMTP AUTH](https://learn.microsoft.com/en-us/exchange/clients-and-mobile-in-exchange-online/authenticated-client-smtp-submission).
+
+The app then connects with XOAUTH2:
+
+- SMTP `smtp.office365.com` port `587` STARTTLS
+- IMAP `outlook.office365.com` port `993` SSL
+
+## 5. Configure the server
+
+Put this in the environment, not in git:
+
+```
+MS_CLIENT_ID=
+MS_CLIENT_SECRET=
+MS_TENANT=common
+PUBLIC_URL=https://mail.example.com
 ```
 
-A local Compose install with `PUBLIC_URL=http://localhost:3000` registers:
+`MS_TENANT` may be `common`, `organizations`, `consumers`, or a tenant id. Restart the app after changing them.
 
-```text
-http://localhost:3000/api/oauth/microsoft/callback
+Open **Mailboxes** and choose **Sign in with Microsoft**. If a variable is missing, the button stays disabled and names the variables above.
+
+## 6. DNS
+
+Microsoft 365 DKIM uses CNAME records at `selector1._domainkey` and `selector2._domainkey`. The mailbox page looks those up. SPF for Microsoft 365 is a TXT record:
+
+```
+v=spf1 include:spf.protection.outlook.com -all
 ```
 
-Microsoft only returns the user to a redirect URI that is listed on the app. The scheme, host, port, and path all have to match. Source: https://learn.microsoft.com/en-us/entra/identity-platform/reply-url
-
-## Scopes
-
-The sign-in requests these scopes:
-
-```text
-offline_access https://outlook.office.com/SMTP.Send https://outlook.office.com/IMAP.AccessAsUser.All openid email
-```
-
-Microsoft's IMAP/SMTP OAuth document uses the same Outlook resource scopes for IMAP and SMTP AUTH, and `offline_access` so the app can receive a refresh token: https://learn.microsoft.com/en-us/exchange/client-developer/legacy-protocols/how-to-authenticate-an-imap-pop-smtp-application-by-using-oauth
-
-Add those as **delegated** permissions for the signed-in user (Office 365 Exchange Online delegated `IMAP.AccessAsUser.All` and `SMTP.Send`, plus `offline_access`, `openid`, and `email`). The application permissions later on that same Microsoft page (`IMAP.AccessAsApp`, `SMTP.SendAsApp`) belong to the client-credentials flow. This app uses the delegated scopes above.
-
-## Create the registration
-
-1. Open the Microsoft Entra admin center → **App registrations** → **New registration**. https://learn.microsoft.com/en-us/graph/auth-register-app-v2
-2. Name the app.
-3. Supported account types: **Accounts in any organizational directory and personal Microsoft accounts** matches the default tenant `common`. A single-directory app needs `MS_TENANT` set to that directory's tenant id.
-4. Under **Redirect URI**, choose platform **Web** and paste `${PUBLIC_URL}/api/oauth/microsoft/callback`. You can also add it later: **Authentication** → **Add a platform** → **Web**. https://learn.microsoft.com/en-us/entra/identity-platform/how-to-add-redirect-uri
-5. Register. Copy the **Application (client) ID** into `MS_CLIENT_ID`.
-6. **Certificates & secrets** → **New client secret**. Copy the secret value into `MS_CLIENT_SECRET`. The portal shows it once.
-7. **API permissions** → add the delegated scopes in the [Scopes](#scopes) section.
-8. Put the three variables in `.env` and restart the `app` service. The mailbox page can then offer **Sign in with Microsoft**.
+Publish one SPF record only. Microsoft's DKIM steps are in [How to use DKIM for email in a custom domain](https://learn.microsoft.com/en-us/defender-office-365/email-authentication-dkim-configure).
