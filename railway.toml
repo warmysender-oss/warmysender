@@ -1,6 +1,6 @@
 # One Railway service: build the repository Dockerfile and start its CMD.
 # deploy.healthcheckPath is unset. The build spec requires a health endpoint
-# and does not name the path.
+# and leaves the path unnamed.
 # deploy.startCommand is unset so the image CMD is the process that starts.
 # Railway's config-as-code docs mark this file format deprecated for new
 # services (existing files keep working until 2026-12-01). The build spec

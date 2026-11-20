@@ -24,7 +24,7 @@ Seeded demo data uses `.test` domains only.
 
 ## Features
 
-- `docker compose up` runs the app, the worker, and PostgreSQL. Jobs stay in Postgres (pg-boss), so a self-hosted install has no Redis to run.
+- `docker compose up` runs the app, the worker, and PostgreSQL. Jobs stay in Postgres through pg-boss.
 - Email and password accounts. The first visitor is the admin and invites teammates by link.
 - API keys (create, name, revoke). A key is shown once and stored hashed.
 - Any SMTP/IMAP mailbox, with presets for Gmail / Google Workspace (App Password), Zoho, Hostinger, Fastmail, and custom hosts, plus Microsoft 365 / Outlook through the self-hoster's own Entra app.

@@ -2,7 +2,7 @@
 
 This is the stub for the self-hoster's own Entra app. Mailbox connect, XOAUTH2, and the in-app button are the mailbox task. The button points here when `MS_CLIENT_ID` and `MS_CLIENT_SECRET` are unset.
 
-The app signs the mailbox user in with that Entra app and stores the refresh token encrypted. You create the app in your own tenant. WarmySender does not ship a shared Microsoft client id.
+The app signs the mailbox user in with that Entra app and stores the refresh token encrypted. You create the app in your own tenant. The Entra client id belongs to the self-hoster.
 
 ## Values the server reads
 

@@ -31,4 +31,4 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-That push is a tag, not a push to `main`.
+Push the tag. Leave `main` for pull requests.
