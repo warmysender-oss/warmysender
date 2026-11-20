@@ -1,0 +1,18 @@
+# WarmySender
+
+> Open-source cold email you can self-host. The open-source Instantly alternative. AGPL-3.0. `docker compose up` runs the app, the worker, and PostgreSQL 16 on your server, with your own SMTP, IMAP, Gmail, or Microsoft 365 mailboxes. Claude, ChatGPT, Cursor, Codex, OpenClaw, and Hermes Agent drive campaigns over MCP. The scheduler sends inside fixed safety limits. Warmup is a WarmySender Cloud feature you connect with a key.
+
+## Documentation
+
+- [README](https://github.com/warmysender-oss/warmysender/blob/main/README.md): Install, features, safety limits, the hosted line, and the short FAQ.
+- [Documentation index](https://github.com/warmysender-oss/warmysender/blob/main/docs/README.md): Every document in `docs/`.
+- [FAQ](https://github.com/warmysender-oss/warmysender/blob/main/docs/faq.md): The same questions as the README, with the longer answers.
+- [Self-hosting](https://github.com/warmysender-oss/warmysender/blob/main/docs/self-hosting/README.md): Docker Compose, Coolify, Dokploy, Portainer, Railway, and the environment variables.
+- [Connect an agent](https://github.com/warmysender-oss/warmysender/blob/main/docs/agents.md): MCP URL, API-key header, and snippets for Claude, ChatGPT, Cursor, Codex, OpenClaw, and Hermes Agent.
+- [Microsoft 365 / Outlook](https://github.com/warmysender-oss/warmysender/blob/main/docs/MICROSOFT-APP.md): The Entra app each self-hoster registers. Mailbox refresh tokens stay on that server.
+- [Changelog](https://github.com/warmysender-oss/warmysender/blob/main/CHANGELOG.md): Notable changes. The first public release is 0.1.0.
+- [Licence](https://github.com/warmysender-oss/warmysender/blob/main/LICENSE): GNU Affero General Public License v3.0.
+
+## Hosted product
+
+- [WarmySender](https://warmysender.com): Hosted version. Adds warmup, email verification, leads and LinkedIn. New accounts get Pro at $9/month with the sign-up offer.
