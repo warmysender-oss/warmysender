@@ -1,0 +1,16 @@
+{
+  "name": "warmysender",
+  "displayName": "WarmySender",
+  "version": "0.1.0",
+  "description": "Self-hosted cold email campaigns, contacts, inbox, and reply drafts. Tools never send or raise limits.",
+  "author": {
+    "name": "WarmySender",
+    "url": "https://warmysender.com"
+  },
+  "homepage": "https://github.com/warmysender-oss/warmysender",
+  "repository": "https://github.com/warmysender-oss/warmysender",
+  "license": "AGPL-3.0",
+  "keywords": ["cold-email", "mcp", "self-hosted", "campaigns", "inbox"],
+  "skills": "skills",
+  "mcpServers": "./.cursor-plugin/mcp.json"
+}
