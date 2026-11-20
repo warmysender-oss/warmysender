@@ -111,7 +111,7 @@ Limits are code. An agent cannot raise them.
 
 ## WarmySender open source vs hosted cold email tools
 
-Instantly, lemlist, and Smartlead are closed-source hosted services. This repository is self-hosted cold email under the GNU AGPL-3.0. The hosted column is Closed source or Hosted only.
+Instantly, lemlist, and Smartlead are closed-source hosted services. This repository is self-hosted cold email under the GNU AGPL-3.0.
 
 | | WarmySender (open source) | Instantly, lemlist, Smartlead (hosted) |
 | --- | --- | --- |
@@ -119,8 +119,8 @@ Instantly, lemlist, and Smartlead are closed-source hosted services. This reposi
 | Self-host on your own server | Yes. `docker compose up` runs the app, the worker, and PostgreSQL 16 on a machine you control. | Hosted only |
 | Licence | [GNU AGPL-3.0](LICENSE) | Closed source |
 | Your data stays on your server | Yes for the app you run. Accounts, contacts, messages, and mailbox secrets stay in your Postgres database. Secrets are encrypted at rest. Connecting warmup sends that mailbox login to your WarmySender account. | Hosted only |
-| AI agents over MCP with safe limits | Yes. Claude, ChatGPT, Cursor, Codex, OpenClaw, and Hermes Agent. Tools create and start campaigns. The scheduler sends. A tool cannot raise a limit or send a message. | Hosted only |
-| Warmup network | No warmup network in this app. Warmup is a WarmySender Cloud feature you connect with a key. | Hosted only |
+| AI agents over MCP with safe limits | Yes. Claude, ChatGPT, Cursor, Codex, OpenClaw, and Hermes Agent. Tools create and start campaigns. The scheduler sends. A tool cannot raise a limit or send a message. | Not compared here |
+| Warmup network | No warmup network in this app. Warmup is a WarmySender Cloud feature you connect with a key. | Not compared here |
 
 ## Costs
 
@@ -177,7 +177,7 @@ GNU Affero General Public License v3.0. You can run, study, and change the code.
 
 ### How is it different from Instantly, lemlist or Smartlead?
 
-You self-host this program, the source is AGPL-3.0, and the database stays on your server. Instantly, lemlist, and Smartlead are closed-source hosted services. People looking for a lemlist alternative or a Smartlead alternative get the same deal as the Instantly alternative in the first line: your server, your mailboxes, and MCP for Claude, ChatGPT, Cursor, Codex, OpenClaw, and Hermes Agent, with the limits above. Their features and prices are outside this page.
+You self-host this program, the source is AGPL-3.0, and the database stays on your server. Instantly, lemlist, and Smartlead are closed-source hosted services. People looking for a lemlist alternative or a Smartlead alternative get the same deal as the Instantly alternative in the first line: your server, your mailboxes, and MCP for Claude, ChatGPT, Cursor, Codex, OpenClaw, and Hermes Agent, with the limits above.
 
 ## Contributing
 
