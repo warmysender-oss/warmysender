@@ -12,7 +12,7 @@
   "dependencies": {
     "@warmysender/core": "workspace:*",
     "drizzle-orm": "0.45.4",
-    "imapflow": "^1.7.8",
+    "imapflow": "^2.12.2",
     "nodemailer": "^10.6.1",
     "pg-boss": "^12.11.1"
   },
